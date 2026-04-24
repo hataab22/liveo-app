@@ -11,6 +11,15 @@ class PreferencesManager(context: Context) {
         context.getSharedPreferences("LiveoPrefs", Context.MODE_PRIVATE)
     private val gson = Gson()
     
+    // M3U URL
+    fun saveM3uUrl(url: String) {
+        prefs.edit().putString("m3u_url", url).apply()
+    }
+    
+    fun getM3uUrl(): String? {
+        return prefs.getString("m3u_url", null)
+    }
+    
     // المفضلة
     fun saveFavorites(favorites: List<Channel>) {
         val json = gson.toJson(favorites)
@@ -91,7 +100,10 @@ class PreferencesManager(context: Context) {
     }
     
     fun clearActivationCode() {
-        prefs.edit().remove("activation_code").apply()
+        prefs.edit()
+            .remove("activation_code")
+            .remove("m3u_url")
+            .apply()
     }
     
     fun isCodeValid(): Boolean {
