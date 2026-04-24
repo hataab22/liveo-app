@@ -76,6 +76,7 @@ class ActivationActivity : AppCompatActivity() {
                         customerName = response.customer_name ?: ""
                     )
                     prefsManager.saveActivationCode(activationCode)
+                    prefsManager.saveM3uUrl(response.m3u_url)
                     
                     // جلب القنوات في background thread
                     val channels = withContext(Dispatchers.IO) {
