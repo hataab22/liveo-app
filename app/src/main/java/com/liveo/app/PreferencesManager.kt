@@ -110,7 +110,16 @@ class PreferencesManager(context: Context) {
     val code = getActivationCode()
     val m3uUrl = getM3uUrl()
     
-    // للتجربة: نتجاهل تاريخ الانتهاء
-    return code != null && m3uUrl != null
+    if (code == null || m3uUrl == null || !code.isActive) {
+        return false
+    }
+    
+    // إذا expiryDate = 0 (غير محدد)، نعتبر الكود صالح
+    if (code.expiryDate == 0L) {
+        return true
+    }
+    
+    // إذا expiryDate محدد، نفحص التاريخ
+    return code.expiryDate > System.currentTimeMillis()
 }
 }
