@@ -99,20 +99,23 @@ class MainActivity : AppCompatActivity() {
     
     private fun loadChannels() {
         val code = prefsManager.getActivationCode()
-        if (code == null) {
+        val m3uUrl = prefsManager.getM3uUrl()
+        
+        if (code == null || m3uUrl == null) {
             navigateToActivation()
             return
         }
         
         CoroutineScope(Dispatchers.Main).launch {
-            // إعادة التحقق من الكود
-            val response = ApiClient.activateCode(
-                code.code,
-                android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID)
-            )
-            
-            if (response.success && response.m3u_url != null) {
-                allChannels = M3UParser.parseFromUrl(response.m3u_url)
+            try {
+                allChannels = withContext(Dispatchers.IO) {
+                    M3UParser.parseFromUrl(m3uUrl)
+                }
+                
+                if (allChannels.isEmpty()) {
+                    Toast.makeText(this@MainActivity, "لم يتم العثور على قنوات", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
                 
                 // تحديث حالة المفضلة
                 val favorites = prefsManager.getFavorites()
@@ -121,9 +124,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 setupViewPager()
-            } else {
-                Toast.makeText(this@MainActivity, "انتهت صلاحية الكود", Toast.LENGTH_LONG).show()
-                navigateToActivation()
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "خطأ في تحميل القنوات: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -155,7 +157,9 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun navigateToActivation() {
-        startActivity(Intent(this, ActivationActivity::class.java))
+        val intent = Intent(this, ActivationActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
         finish()
     }
 }
