@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 
 class ActivationActivity : AppCompatActivity() {
     
@@ -92,6 +93,9 @@ class ActivationActivity : AppCompatActivity() {
                                 Toast.LENGTH_LONG
                             ).show()
                             
+                            // انتظار قصير لضمان حفظ البيانات
+                            delay(500)
+                            
                             // الانتقال للصفحة الرئيسية
                             navigateToMain()
                         } else {
@@ -121,6 +125,7 @@ class ActivationActivity : AppCompatActivity() {
     
     private fun navigateToMain() {
         val intent = Intent(this, MainActivity::class.java)
+        intent.putExtra("FROM_ACTIVATION", true)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
