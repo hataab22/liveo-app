@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Liveo</string>
+    <string name="activation_hint">أدخل كود التفعيل</string>
+    <string name="activate">تفعيل</string>
+    <string name="search_hint">ابحث عن قناة...</string>
+    <string name="all">الكل</string>
+    <string name="favorites">المفضلة</string>
+    <string name="recent">الأخيرة</string>
+    <string name="logout">تسجيل خروج</string>
+    <string name="refresh">تحديث</string>
+</resources>
