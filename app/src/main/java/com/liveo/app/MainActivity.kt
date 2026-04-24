@@ -36,7 +36,9 @@ class MainActivity : AppCompatActivity() {
         
         prefsManager = PreferencesManager(this)
         
-        if (!prefsManager.isCodeValid()) {
+        val fromActivation = intent.getBooleanExtra("FROM_ACTIVATION", false)
+        
+        if (!fromActivation && !prefsManager.isCodeValid()) {
             navigateToActivation()
             return
         }
@@ -77,11 +79,15 @@ class MainActivity : AppCompatActivity() {
     private fun updateExpiryInfo() {
         val code = prefsManager.getActivationCode()
         if (code != null) {
-            val daysLeft = ((code.expiryDate - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).toInt()
-            expiryText.text = "متبقي: $daysLeft يوم"
-            
-            if (daysLeft <= 3) {
-                expiryText.setTextColor(getColor(R.color.warning))
+            if (code.expiryDate == 0L) {
+                expiryText.text = "غير محدود"
+            } else {
+                val daysLeft = ((code.expiryDate - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).toInt()
+                expiryText.text = "متبقي: $daysLeft يوم"
+                
+                if (daysLeft <= 3) {
+                    expiryText.setTextColor(getColor(R.color.warning))
+                }
             }
         }
     }
@@ -98,10 +104,10 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun loadChannels() {
-        val code = prefsManager.getActivationCode()
         val m3uUrl = prefsManager.getM3uUrl()
         
-        if (code == null || m3uUrl == null) {
+        if (m3uUrl == null) {
+            Toast.makeText(this, "خطأ: لم يتم العثور على رابط القنوات", Toast.LENGTH_LONG).show()
             navigateToActivation()
             return
         }
