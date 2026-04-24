@@ -107,9 +107,10 @@ class PreferencesManager(context: Context) {
     }
     
     fun isCodeValid(): Boolean {
-        val code = getActivationCode()
-        return code != null && 
-               code.isActive && 
-               code.expiryDate > System.currentTimeMillis()
-    }
+    val code = getActivationCode()
+    val m3uUrl = getM3uUrl()
+    
+    // للتجربة: نتجاهل تاريخ الانتهاء
+    return code != null && m3uUrl != null
+}
 }
