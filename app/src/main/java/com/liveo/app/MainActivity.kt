@@ -2,8 +2,6 @@ package com.liveo.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager.widget.ViewPager
@@ -19,7 +17,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewPager: ViewPager
     private lateinit var tabLayout: TabLayout
     private lateinit var prefsManager: PreferencesManager
-    private var progressBar: ProgressBar? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,30 +35,25 @@ class MainActivity : AppCompatActivity() {
         
         viewPager = findViewById(R.id.viewPager)
         tabLayout = findViewById(R.id.tabLayout)
-        progressBar = findViewById(R.id.progressBar)
         
         loadChannels()
     }
     
     private fun loadChannels() {
-        showLoading(true)
+        Toast.makeText(this, "جاري تحميل القنوات... الرجاء الانتظار", Toast.LENGTH_LONG).show()
         
         val m3uUrl = "https://liveo-backend.onrender.com/api/playlist/${prefsManager.getActivationCode()?.code}"
         
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                Toast.makeText(this@MainActivity, "جاري تحميل القنوات...", Toast.LENGTH_SHORT).show()
-                
-                val channels = withTimeout(30000L) { // 30 seconds timeout
+                val channels = withTimeout(60000L) { // 60 seconds timeout
                     withContext(Dispatchers.IO) {
                         M3UParser.parseFromUrl(m3uUrl)
                     }
                 }
                 
-                showLoading(false)
-                
                 if (channels.isNotEmpty()) {
-                    Toast.makeText(this@MainActivity, "تم تحميل ${channels.size} قناة", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "تم تحميل ${channels.size} قناة بنجاح!", Toast.LENGTH_SHORT).show()
                     val adapter = ViewPagerAdapter(supportFragmentManager, channels, prefsManager)
                     viewPager.adapter = adapter
                     tabLayout.setupWithViewPager(viewPager)
@@ -69,23 +61,17 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this@MainActivity, "لا توجد قنوات متاحة", Toast.LENGTH_LONG).show()
                 }
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-                showLoading(false)
-                Toast.makeText(this@MainActivity, "انتهت مهلة التحميل. الرجاء المحاولة مرة أخرى", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MainActivity, "انتهت مهلة التحميل. الملف كبير جداً. حاول مرة أخرى", Toast.LENGTH_LONG).show()
+                finish()
             } catch (e: OutOfMemoryError) {
-                showLoading(false)
-                Toast.makeText(this@MainActivity, "الملف كبير جداً. جاري إعادة المحاولة...", Toast.LENGTH_LONG).show()
-                System.gc() // تنظيف الذاكرة
+                Toast.makeText(this@MainActivity, "الذاكرة ممتلئة. الملف كبير جداً", Toast.LENGTH_LONG).show()
+                System.gc()
+                finish()
             } catch (e: Exception) {
-                showLoading(false)
                 Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
                 e.printStackTrace()
+                finish()
             }
         }
-    }
-    
-    private fun showLoading(show: Boolean) {
-        progressBar?.visibility = if (show) View.VISIBLE else View.GONE
-        viewPager.visibility = if (show) View.GONE else View.VISIBLE
-        tabLayout.visibility = if (show) View.GONE else View.VISIBLE
     }
 }
