@@ -59,7 +59,7 @@ class RecentFragment : Fragment() {
                 } else {
                     prefsManager.addToFavorites(channel)
                 }
-                adapter.notifyDataSetChanged()
+                loadRecent()
             },
             isFavorite = { channel -> prefsManager.isFavorite(channel) }
         )
