@@ -1,71 +1,105 @@
 package com.liveo.app
 
+import android.content.Intent
+import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
+import com.google.gson.Gson
 
-class ChannelAdapter(
-    private var channels: List<Channel>,
-    private val onChannelClick: (Channel) -> Unit,
-    private val onFavoriteClick: ((Channel) -> Unit)? = null,
-    private val prefsManager: PreferencesManager? = null
-) : RecyclerView.Adapter<ChannelAdapter.ChannelViewHolder>() {
-
-    class ChannelViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val channelName: TextView = view.findViewById(R.id.channelName)
-        val channelImage: ImageView = view.findViewById(R.id.channelImage)
-        val favoriteIcon: ImageView = view.findViewById(R.id.favoriteIcon)
-    }
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChannelViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_channel, parent, false)
-        return ChannelViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: ChannelViewHolder, position: Int) {
-        val channel = channels[position]
-        
-        holder.channelName.text = channel.name
-        
-        if (channel.logo.isNotEmpty()) {
-            Glide.with(holder.itemView.context)
-                .load(channel.logo)
-                .placeholder(R.drawable.ic_tv)
-                .error(R.drawable.ic_tv)
-                .into(holder.channelImage)
-        } else {
-            holder.channelImage.setImageResource(R.drawable.ic_tv)
+class AllChannelsFragment : Fragment() {
+    
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: ChannelAdapter
+    private lateinit var prefsManager: PreferencesManager
+    
+    private var allChannels = listOf<Channel>()
+    private var filteredChannels = listOf<Channel>()
+    
+    companion object {
+        fun newInstance(channels: List<Channel>, prefsManager: PreferencesManager): AllChannelsFragment {
+            val fragment = AllChannelsFragment()
+            fragment.allChannels = filterProtectedContent(channels, prefsManager)
+            fragment.filteredChannels = fragment.allChannels
+            fragment.prefsManager = prefsManager
+            return fragment
         }
         
-        // تحديث أيقونة المفضلة
-        if (prefsManager != null) {
-            val isFavorite = prefsManager.isFavorite(channel)
-            holder.favoriteIcon.setImageResource(
-                if (isFavorite) R.drawable.ic_favorite_filled 
-                else R.drawable.ic_favorite_border
-            )
+        private fun filterProtectedContent(channels: List<Channel>, prefsManager: PreferencesManager): List<Channel> {
+            val isUnlocked = prefsManager.isParentalUnlocked()
             
-            holder.favoriteIcon.setOnClickListener {
-                onFavoriteClick?.invoke(channel)
+            return if (isUnlocked) {
+                channels
+            } else {
+                channels.filter { channel ->
+                    !channel.category.contains("+18", ignoreCase = true) &&
+                    !channel.category.contains("adult", ignoreCase = true) &&
+                    !channel.category.contains("للكبار", ignoreCase = true)
+                }
             }
-        } else {
-            holder.favoriteIcon.visibility = View.GONE
-        }
-        
-        holder.itemView.setOnClickListener {
-            onChannelClick(channel)
         }
     }
-
-    override fun getItemCount() = channels.size
-
-    fun updateChannels(newChannels: List<Channel>) {
-        channels = newChannels
-        notifyDataSetChanged()
+    
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        recyclerView = RecyclerView(requireContext())
+        setupRecyclerView()
+        return recyclerView
+    }
+    
+    private fun setupRecyclerView() {
+        val spanCount = when {
+            resources.displayMetrics.widthPixels >= 2160 -> 6
+            resources.displayMetrics.widthPixels >= 1920 -> 5
+            resources.displayMetrics.widthPixels >= 1280 -> 4
+            resources.displayMetrics.widthPixels >= 960 -> 3
+            else -> 2
+        }
+        
+        recyclerView.layoutManager = GridLayoutManager(requireContext(), spanCount)
+        
+        adapter = ChannelAdapter(
+            channels = filteredChannels,
+            onChannelClick = { channel -> openPlayer(channel) },
+            onFavoriteClick = { channel ->
+                if (prefsManager.isFavorite(channel)) {
+                    prefsManager.removeFromFavorites(channel)
+                } else {
+                    prefsManager.addToFavorites(channel)
+                }
+                adapter.notifyDataSetChanged()
+            },
+            prefsManager = prefsManager
+        )
+        
+        recyclerView.adapter = adapter
+    }
+    
+    fun search(query: String) {
+        filteredChannels = if (query.isEmpty()) {
+            allChannels
+        } else {
+            allChannels.filter { 
+                it.name.contains(query, ignoreCase = true) || 
+                it.category.contains(query, ignoreCase = true)
+            }
+        }
+        adapter.updateChannels(filteredChannels)
+    }
+    
+    private fun openPlayer(channel: Channel) {
+        prefsManager.addToRecent(channel)
+        
+        val intent = Intent(requireContext(), PlayerActivity::class.java)
+        intent.putExtra("channel_name", channel.name)
+        intent.putExtra("channel_url", channel.url)
+        intent.putExtra("all_channels", Gson().toJson(allChannels))
+        startActivity(intent)
     }
 }
