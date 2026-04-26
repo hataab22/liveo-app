@@ -13,17 +13,13 @@ import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 class MainActivity : AppCompatActivity() {
     
     private lateinit var viewPager: ViewPager2
     private lateinit var tabLayout: TabLayout
-    private lateinit var searchView: SearchView
     private lateinit var prefsManager: PreferencesManager
     private lateinit var expiryText: TextView
-    private lateinit var pagerAdapter: ViewPagerAdapter
     
     private var allChannels = listOf<Channel>()
     
@@ -67,11 +63,9 @@ class MainActivity : AppCompatActivity() {
     private fun setupViews() {
         viewPager = findViewById(R.id.viewPager)
         tabLayout = findViewById(R.id.tabLayout)
-        searchView = findViewById(R.id.searchView)
         expiryText = findViewById(R.id.expiryText)
         
         updateExpiryInfo()
-        setupSearch()
     }
     
     private fun updateExpiryInfo() {
@@ -86,30 +80,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun setupSearch() {
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean = false
-            
-            override fun onQueryTextChange(newText: String?): Boolean {
-                performSearch(newText ?: "")
-                return true
-            }
-        })
-    }
-    
-    private fun performSearch(query: String) {
-        if (!::pagerAdapter.isInitialized) return
-        
-        val currentPosition = viewPager.currentItem
-        val fragment = pagerAdapter.getFragment(currentPosition)
-        
-        when (fragment) {
-            is AllChannelsFragment -> fragment.search(query)
-            is FavoritesFragment -> fragment.search(query)
-            is RecentFragment -> fragment.search(query)
-        }
-    }
-    
     private fun loadChannels() {
         val code = prefsManager.getActivationCode()
         if (code == null) {
@@ -118,7 +88,6 @@ class MainActivity : AppCompatActivity() {
         }
         
         CoroutineScope(Dispatchers.Main).launch {
-            // إعادة التحقق من الكود
             val response = ApiClient.activateCode(
                 code.code,
                 android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID)
@@ -127,7 +96,6 @@ class MainActivity : AppCompatActivity() {
             if (response.success && response.m3u_url != null) {
                 allChannels = M3UParser.parseFromUrl(response.m3u_url)
                 
-                // تحديث حالة المفضلة
                 val favorites = prefsManager.getFavorites()
                 allChannels.forEach { channel ->
                     channel.isFavorite = favorites.any { it.id == channel.id }
@@ -142,8 +110,8 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setupViewPager() {
-        pagerAdapter = ViewPagerAdapter(this, allChannels, prefsManager)
-        viewPager.adapter = pagerAdapter
+        val adapter = ViewPagerAdapter(this, allChannels, prefsManager)
+        viewPager.adapter = adapter
         
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = when (position) {
