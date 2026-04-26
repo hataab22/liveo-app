@@ -18,8 +18,9 @@ object M3UParser {
             Log.d(TAG, "Parsing: $m3uUrl")
             
             val connection = URL(m3uUrl).openConnection()
-            connection.connectTimeout = 20000
-            connection.readTimeout = 20000
+            connection.connectTimeout = 30000
+            connection.readTimeout = 30000
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
             
             BufferedReader(InputStreamReader(connection.getInputStream())).use { reader ->
                 var currentName = ""
@@ -39,8 +40,11 @@ object M3UParser {
                                 currentCategory = extractAttribute(currentLine, "group-title")
                             }
                             currentLine.trim().startsWith("http") -> {
-                                // ✅ تجاهل الروابط الوهمية
-                                if (!currentLine.contains("ضع_الرابط_هنا")) {
+                                // ✅ تجاهل الروابط الوهمية والفارغة
+                                if (currentLine.trim() != "ضع_الرابط_هنا" && 
+                                    !currentLine.contains("ضع_الرابط") &&
+                                    currentLine.trim().isNotEmpty()) {
+                                    
                                     val channel = Channel(
                                         id = id.toString(),
                                         name = if (currentName.isNotEmpty()) currentName else "قناة $id",
@@ -49,7 +53,11 @@ object M3UParser {
                                         category = currentCategory.ifEmpty { "عام" }
                                     )
                                     channels.add(channel)
-                                    Log.d(TAG, "Added: ${channel.name} - ${channel.category}")
+                                    
+                                    if (id % 10 == 0) {
+                                        Log.d(TAG, "Loaded $id channels...")
+                                    }
+                                    
                                     id++
                                 }
                             }
@@ -60,7 +68,7 @@ object M3UParser {
                 }
             }
             
-            Log.d(TAG, "Total channels: ${channels.size}")
+            Log.d(TAG, "Total channels parsed: ${channels.size}")
             
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing M3U", e)
