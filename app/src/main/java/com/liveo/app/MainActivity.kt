@@ -55,16 +55,16 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun loadChannels() {
-        Toast.makeText(this, "جاري التحميل...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "جاري تحميل قنواتك...", Toast.LENGTH_SHORT).show()
         
-        val code = prefsManager.getActivationCode()?.code
-        val m3uUrl = "https://liveo-backend.onrender.com/api/playlist/$code"
+        // ✅ رابط Google Drive الخاص بك
+        val m3uUrl = "https://drive.google.com/uc?export=download&id=1EED9-uQPohWSo2mPYtT9Ji9hr7wBzg4A"
         
-        Log.d(TAG, "Loading from URL: $m3uUrl")
+        Log.d(TAG, "Loading from: $m3uUrl")
         
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                val channels = withTimeout(45000L) {
+                val channels = withTimeout(60000L) { // 60 seconds
                     withContext(Dispatchers.IO) {
                         try {
                             M3UParser.parseFromUrl(m3uUrl)
@@ -75,84 +75,25 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 
-                Log.d(TAG, "Channels received: ${channels.size}")
+                Log.d(TAG, "Channels loaded: ${channels.size}")
                 
-                // ✅ Fallback: لو ما لقى قنوات، نستخدم قنوات تجريبية
-                val finalChannels = if (channels.isEmpty()) {
-                    Log.w(TAG, "No channels from API, using fallback")
-                    Toast.makeText(this@MainActivity, "استخدام قنوات تجريبية...", Toast.LENGTH_SHORT).show()
-                    getFallbackChannels()
-                } else {
-                    channels
-                }
-                
-                if (finalChannels.isNotEmpty()) {
-                    Toast.makeText(this@MainActivity, "تم تحميل ${finalChannels.size} قناة", Toast.LENGTH_SHORT).show()
+                if (channels.isNotEmpty()) {
+                    Toast.makeText(this@MainActivity, "تم تحميل ${channels.size} قناة بنجاح!", Toast.LENGTH_SHORT).show()
                     
-                    val adapter = ViewPagerAdapter(supportFragmentManager, finalChannels, prefsManager)
+                    val adapter = ViewPagerAdapter(supportFragmentManager, channels, prefsManager)
                     viewPager.adapter = adapter
                     tabLayout.setupWithViewPager(viewPager)
                 } else {
-                    Toast.makeText(this@MainActivity, "لم يتم العثور على قنوات", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, "لم يتم العثور على قنوات في الملف", Toast.LENGTH_LONG).show()
                 }
                 
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                Log.e(TAG, "Timeout loading channels", e)
+                Toast.makeText(this@MainActivity, "انتهت مهلة التحميل. تحقق من الاتصال", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading channels", e)
                 Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
-                
-                // ✅ استخدم قنوات تجريبية عند الخطأ
-                loadFallbackChannels()
             }
         }
-    }
-    
-    private fun loadFallbackChannels() {
-        val channels = getFallbackChannels()
-        if (channels.isNotEmpty()) {
-            Toast.makeText(this, "تم تحميل ${channels.size} قناة تجريبية", Toast.LENGTH_SHORT).show()
-            val adapter = ViewPagerAdapter(supportFragmentManager, channels, prefsManager)
-            viewPager.adapter = adapter
-            tabLayout.setupWithViewPager(viewPager)
-        }
-    }
-    
-    private fun getFallbackChannels(): List<Channel> {
-        return listOf(
-            Channel(
-                "1", 
-                "Big Buck Bunny", 
-                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-                "", 
-                "عام"
-            ),
-            Channel(
-                "2", 
-                "Elephant Dream", 
-                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-                "", 
-                "عام"
-            ),
-            Channel(
-                "3", 
-                "For Bigger Blazes", 
-                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-                "", 
-                "عام"
-            ),
-            Channel(
-                "4", 
-                "Sintel", 
-                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-                "", 
-                "عام"
-            ),
-            Channel(
-                "5", 
-                "Tears of Steel", 
-                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-                "", 
-                "عام"
-            )
-        )
     }
 }
