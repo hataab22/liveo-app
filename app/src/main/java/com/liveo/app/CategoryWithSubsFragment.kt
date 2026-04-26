@@ -70,33 +70,46 @@ class CategoryWithSubsFragment : Fragment() {
     }
     
     private fun createSubCategoriesView(): HorizontalScrollView {
-        val subCategories = when (categoryType) {
-            "بث مباشر" -> listOf("الكل", "رياضة", "أخبار", "MBC", "أطفال")
-            "أفلام" -> listOf("الكل", "عربي", "أجنبي", "للكبار")
-            "مسلسلات" -> listOf("الكل", "عربي", "تركي", "هندي")
-            "موسيقى" -> listOf("الكل", "عربي", "أجنبي")
-            else -> listOf("الكل")
+    val subCategories = when (categoryType) {
+        "بث مباشر" -> {
+            val base = mutableListOf("الكل", "رياضة", "أخبار", "MBC", "أطفال")
+            if (prefsManager.isParentalUnlocked()) {
+                base.add("للكبار")
+            }
+            base.toList()
         }
-        
-        val buttonsLayout = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            val padding = 16
-            setPadding(padding, padding, padding, padding)
+        "أفلام" -> {
+            val base = mutableListOf("الكل", "عربي", "أجنبي")
+            if (prefsManager.isParentalUnlocked()) {
+                base.add("للكبار")
+            }
+            base.toList()
         }
-        
-        subCategories.forEach { subCat ->
-            buttonsLayout.addView(createButton(subCat))
-        }
-        
-        return HorizontalScrollView(requireContext()).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            setBackgroundColor(Color.parseColor("#1E1E1E"))
-            addView(buttonsLayout)
-        }
+        "مسلسلات" -> listOf("الكل", "عربي", "تركي", "هندي")
+        "موسيقى" -> listOf("الكل", "عربي", "أجنبي")
+        else -> listOf("الكل")
     }
+    
+    val buttonsLayout = LinearLayout(requireContext()).apply {
+        orientation = LinearLayout.HORIZONTAL
+        val padding = 16
+        setPadding(padding, padding, padding, padding)
+    }
+    
+    subCategories.forEach { subCat ->
+        buttonsLayout.addView(createButton(subCat))
+    }
+    
+    return HorizontalScrollView(requireContext()).apply {
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        setBackgroundColor(Color.parseColor("#1E1E1E"))
+        addView(buttonsLayout)
+    }
+}
+
     
     private fun createButton(text: String): TextView {
         return TextView(requireContext()).apply {
