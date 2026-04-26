@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -14,7 +13,6 @@ import com.google.gson.Gson
 class FavoritesFragment : Fragment() {
     
     private lateinit var recyclerView: RecyclerView
-    private lateinit var emptyView: TextView
     private lateinit var adapter: ChannelAdapter
     private lateinit var prefsManager: PreferencesManager
     
@@ -31,19 +29,13 @@ class FavoritesFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val view = View(requireContext())
-        return view
-    }
-    
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+        recyclerView = RecyclerView(requireContext())
         setupRecyclerView()
         loadFavorites()
+        return recyclerView
     }
     
     private fun setupRecyclerView() {
-        recyclerView = RecyclerView(requireContext())
-        
         val spanCount = when {
             resources.displayMetrics.widthPixels >= 2160 -> 6
             resources.displayMetrics.widthPixels >= 1920 -> 5
@@ -57,11 +49,6 @@ class FavoritesFragment : Fragment() {
     
     private fun loadFavorites() {
         val favorites = prefsManager.getFavorites()
-        
-        if (favorites.isEmpty()) {
-            // Show empty state
-            return
-        }
         
         adapter = ChannelAdapter(
             channels = favorites,
