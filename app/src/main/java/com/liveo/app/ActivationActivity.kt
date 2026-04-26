@@ -10,7 +10,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ActivationActivity : AppCompatActivity() {
     
@@ -63,9 +64,9 @@ class ActivationActivity : AppCompatActivity() {
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         
         CoroutineScope(Dispatchers.Main).launch {
-            try {
-                val response = ApiClient.activateCode(code, deviceId)
-                
+            val response = ApiClient.activateCode(code, deviceId)
+            
+            withContext(Dispatchers.Main) {
                 showLoading(false)
                 
                 if (response.success && response.m3u_url != null) {
@@ -74,41 +75,28 @@ class ActivationActivity : AppCompatActivity() {
                         code = response.code ?: code,
                         expiryDate = response.expires_at ?: 0,
                         isActive = true,
-                        customerName = response.customer_name ?: ""
+                        customerName = response.customer_name ?: "",
+                        parentalPin = response.parental_pin
                     )
                     prefsManager.saveActivationCode(activationCode)
-                    prefsManager.saveM3uUrl(response.m3u_url)
                     
-                    // جلب القنوات في background thread
-                    val channels = withContext(Dispatchers.IO) {
-                        M3UParser.parseFromUrl(response.m3u_url)
-                    }
-                    
-                    // العودة للـ Main thread
-                    withContext(Dispatchers.Main) {
-                        if (channels.isNotEmpty()) {
-                            Toast.makeText(
-                                this@ActivationActivity, 
-                                "تم التفعيل! ${channels.size} قناة", 
-                                Toast.LENGTH_LONG
-                            ).show()
-                            
-                            // انتظار قصير لضمان حفظ البيانات
-                            delay(500)
-                            
-                            // الانتقال للصفحة الرئيسية
-                            navigateToMain()
-                        } else {
-                            showError("لم يتم العثور على قنوات")
-                        }
-                    }
+                    // جلب القنوات
+                    loadChannels(response.m3u_url)
                 } else {
                     showError(response.message ?: "خطأ في التفعيل")
                 }
-            } catch (e: Exception) {
-                showLoading(false)
-                showError("حدث خطأ: ${e.message}")
             }
+        }
+    }
+    
+    private suspend fun loadChannels(m3uUrl: String) {
+        val channels = M3UParser.parseFromUrl(m3uUrl)
+        
+        if (channels.isNotEmpty()) {
+            Toast.makeText(this, "تم التفعيل! ${channels.size} قناة", Toast.LENGTH_SHORT).show()
+            navigateToMain()
+        } else {
+            showError("لم يتم العثور على قنوات")
         }
     }
     
@@ -124,10 +112,7 @@ class ActivationActivity : AppCompatActivity() {
     }
     
     private fun navigateToMain() {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.putExtra("FROM_ACTIVATION", true)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
+        startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
 }
