@@ -107,3 +107,10 @@ class PreferencesManager(context: Context) {
         return getActivationCode()?.parentalPin
     }
 }
+fun clearActivation() {
+    sharedPreferences.edit().apply {
+        remove("activation_code")
+        remove("activated")
+        apply()
+    }
+}
