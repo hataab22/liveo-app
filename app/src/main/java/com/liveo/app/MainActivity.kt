@@ -2,10 +2,16 @@ package com.liveo.app
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 class MainActivity : AppCompatActivity() {
     
@@ -13,10 +19,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabLayout: TabLayout
     private lateinit var prefsManager: PreferencesManager
     
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         try {
+            Log.d(TAG, "onCreate started")
+            
             prefsManager = PreferencesManager(this)
             prefsManager.resetParentalLock()
             
@@ -32,22 +44,48 @@ class MainActivity : AppCompatActivity() {
             viewPager = findViewById(R.id.viewPager)
             tabLayout = findViewById(R.id.tabLayout)
             
-            // ✅ قنوات تجريبية بدون Network
-            val testChannels = listOf(
-                Channel("1", "القناة 1", "https://test.com/ch1.m3u8", "", "عام"),
-                Channel("2", "القناة 2", "https://test.com/ch2.m3u8", "", "عام"),
-                Channel("3", "القناة 3", "https://test.com/ch3.m3u8", "", "رياضة")
-            )
-            
-            Toast.makeText(this, "تم تحميل ${testChannels.size} قنوات", Toast.LENGTH_SHORT).show()
-            
-            val adapter = ViewPagerAdapter(supportFragmentManager, testChannels, prefsManager)
-            viewPager.adapter = adapter
-            tabLayout.setupWithViewPager(viewPager)
+            loadChannels()
             
         } catch (e: Exception) {
+            Log.e(TAG, "Error in onCreate", e)
             Toast.makeText(this, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
-            e.printStackTrace()
+        }
+    }
+    
+    private fun loadChannels() {
+        Toast.makeText(this, "جاري التحميل...", Toast.LENGTH_SHORT).show()
+        
+        val m3uUrl = "https://liveo-backend.onrender.com/api/playlist/${prefsManager.getActivationCode()?.code}"
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                Log.d(TAG, "Loading from: $m3uUrl")
+                
+                val channels = withTimeout(45000L) { // 45 seconds
+                    withContext(Dispatchers.IO) {
+                        M3UParser.parseFromUrl(m3uUrl)
+                    }
+                }
+                
+                Log.d(TAG, "Loaded ${channels.size} channels")
+                
+                if (channels.isNotEmpty()) {
+                    Toast.makeText(this@MainActivity, "تم تحميل ${channels.size} قناة بنجاح", Toast.LENGTH_SHORT).show()
+                    
+                    val adapter = ViewPagerAdapter(supportFragmentManager, channels, prefsManager)
+                    viewPager.adapter = adapter
+                    tabLayout.setupWithViewPager(viewPager)
+                } else {
+                    Toast.makeText(this@MainActivity, "لم يتم العثور على قنوات", Toast.LENGTH_LONG).show()
+                }
+                
+            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                Log.e(TAG, "Timeout loading channels", e)
+                Toast.makeText(this@MainActivity, "انتهت مهلة التحميل. حاول مرة أخرى", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading channels", e)
+                Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 }
