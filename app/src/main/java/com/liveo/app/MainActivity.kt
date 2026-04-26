@@ -39,18 +39,12 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun loadChannels() {
+        val m3uUrl = "https://liveo-backend.onrender.com/api/playlist/${prefsManager.getActivationCode()?.code}"
+        
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                val activation = prefsManager.getActivationCode()
-                if (activation == null || activation.m3uUrl.isEmpty()) {
-                    Toast.makeText(this@MainActivity, "خطأ في التفعيل", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this@MainActivity, ActivationActivity::class.java))
-                    finish()
-                    return@launch
-                }
-                
                 val channels = withContext(Dispatchers.IO) {
-                    M3UParser.parseFromUrl(activation.m3uUrl)
+                    M3UParser.parseFromUrl(m3uUrl)
                 }
                 
                 if (channels.isNotEmpty()) {
