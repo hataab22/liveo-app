@@ -45,41 +45,57 @@ class ActivationActivity : AppCompatActivity() {
         )
         
         CoroutineScope(Dispatchers.Main).launch {
-            val response = ApiClient.activateCode(code, deviceId)
-            
-            activateButton.isEnabled = true
-            
-            if (response.success && response.m3u_url != null) {
-                val activationCode = ActivationCode(
-                    code = response.code ?: code,
-                    expiryDate = response.expires_at ?: 0,
-                    isActive = true,
-                    customerName = response.customer_name ?: "",
-                    parentalPin = response.parental_pin
-                )
-                prefsManager.saveActivationCode(activationCode)
+            try {
+                val response = ApiClient.activateCode(code, deviceId)
                 
-                loadChannels(response.m3u_url)
-            } else {
-                showError(response.message ?: "خطأ في التفعيل")
+                activateButton.isEnabled = true
+                
+                if (response.success) {
+                    // حفظ بيانات التفعيل
+                    val activationCode = ActivationCode(
+                        code = response.code ?: code,
+                        expiryDate = response.expires_at ?: 0,
+                        isActive = true,
+                        customerName = response.customer_name ?: "",
+                        parentalPin = response.parental_pin
+                    )
+                    prefsManager.saveActivationCode(activationCode)
+                    
+                    Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح", Toast.LENGTH_SHORT).show()
+                    
+                    // تحميل القنوات في الخلفية (اختياري)
+                    if (response.m3u_url != null && response.m3u_url.isNotEmpty()) {
+                        loadChannelsInBackground(response.m3u_url)
+                    }
+                    
+                    // الانتقال للصفحة الرئيسية فوراً (بدون انتظار القنوات)
+                    navigateToMain()
+                } else {
+                    showError(response.message ?: "خطأ في التفعيل")
+                }
+            } catch (e: Exception) {
+                activateButton.isEnabled = true
+                showError("خطأ في الاتصال: ${e.message}")
             }
         }
     }
     
-    private suspend fun loadChannels(m3uUrl: String) {
-        try {
-            val channels = withContext(Dispatchers.IO) {
-                M3UParser.parseFromUrl(m3uUrl)
+    private fun loadChannelsInBackground(m3uUrl: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val channels = M3UParser.parseFromUrl(m3uUrl)
+                if (channels.isNotEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            this@ActivationActivity,
+                            "تم تحميل ${channels.size} قناة",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                // تجاهل الأخطاء - القنوات ستُحمّل من MainActivity
             }
-            
-            if (channels.isNotEmpty()) {
-                Toast.makeText(this, "تم التفعيل بنجاح", Toast.LENGTH_SHORT).show()
-                navigateToMain()
-            } else {
-                showError("لم يتم العثور على قنوات")
-            }
-        } catch (e: Exception) {
-            showError("خطأ في تحميل القنوات: ${e.message}")
         }
     }
     
@@ -88,7 +104,9 @@ class ActivationActivity : AppCompatActivity() {
     }
     
     private fun navigateToMain() {
-        startActivity(Intent(this, MainActivity::class.java))
+        val intent = Intent(this, MainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
         finish()
     }
 }
