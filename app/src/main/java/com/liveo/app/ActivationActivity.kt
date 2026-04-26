@@ -4,10 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.isVisible
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,7 +15,6 @@ class ActivationActivity : AppCompatActivity() {
     
     private lateinit var codeInput: EditText
     private lateinit var activateButton: Button
-    private lateinit var progressBar: ProgressBar
     private lateinit var prefsManager: PreferencesManager
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,7 +25,6 @@ class ActivationActivity : AppCompatActivity() {
         
         codeInput = findViewById(R.id.codeInput)
         activateButton = findViewById(R.id.activateButton)
-        progressBar = findViewById(R.id.progressBar)
         
         activateButton.setOnClickListener {
             val code = codeInput.text.toString().trim()
@@ -41,7 +37,6 @@ class ActivationActivity : AppCompatActivity() {
     }
     
     private fun activateCode(code: String) {
-        progressBar.isVisible = true
         activateButton.isEnabled = false
         
         val deviceId = android.provider.Settings.Secure.getString(
@@ -52,11 +47,9 @@ class ActivationActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.Main).launch {
             val response = ApiClient.activateCode(code, deviceId)
             
-            progressBar.isVisible = false
             activateButton.isEnabled = true
             
             if (response.success && response.m3u_url != null) {
-                // حفظ معلومات الكود
                 val activationCode = ActivationCode(
                     code = response.code ?: code,
                     expiryDate = response.expires_at ?: 0,
@@ -66,7 +59,6 @@ class ActivationActivity : AppCompatActivity() {
                 )
                 prefsManager.saveActivationCode(activationCode)
                 
-                // جلب القنوات
                 loadChannels(response.m3u_url)
             } else {
                 showError(response.message ?: "خطأ في التفعيل")
