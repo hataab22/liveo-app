@@ -9,6 +9,7 @@ import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.gson.Gson
 
 class AllChannelsFragment : Fragment() {
     
@@ -19,6 +20,7 @@ class AllChannelsFragment : Fragment() {
     
     private var allChannels = listOf<Channel>()
     private var filteredChannels = listOf<Channel>()
+    private var currentSearchQuery = ""
     
     companion object {
         private const val ARG_CHANNELS = "channels"
@@ -53,7 +55,10 @@ class AllChannelsFragment : Fragment() {
     }
     
     private fun setupRecyclerView() {
-        recyclerView.layoutManager = GridLayoutManager(context, 2)
+        // حساب عدد الأعمدة حسب حجم الشاشة
+        val spanCount = calculateSpanCount()
+        recyclerView.layoutManager = GridLayoutManager(context, spanCount)
+        
         adapter = ChannelAdapter(
             channels = emptyList(),
             onChannelClick = { channel -> openPlayer(channel) },
@@ -62,7 +67,22 @@ class AllChannelsFragment : Fragment() {
         recyclerView.adapter = adapter
     }
     
+    private fun calculateSpanCount(): Int {
+        val displayMetrics = resources.displayMetrics
+        val screenWidthDp = displayMetrics.widthPixels / displayMetrics.density
+        
+        return when {
+            screenWidthDp >= 900 -> 6  // تلفزيون أو تابلت كبير
+            screenWidthDp >= 600 -> 4  // تابلت
+            screenWidthDp >= 480 -> 3  // أندرويد بوكس
+            else -> 2               // موبايل
+        }
+    }
+    
     private fun setupCategoryFilter() {
+        // فلترة المحتوى المحمي
+        allChannels = filterProtectedContent(allChannels)
+        
         val categories = mutableListOf("الكل")
         categories.addAll(allChannels.map { it.category }.distinct().sorted())
         
@@ -82,12 +102,50 @@ class AllChannelsFragment : Fragment() {
         }
     }
     
+    private fun filterProtectedContent(channels: List<Channel>): List<Channel> {
+        val isUnlocked = prefsManager.isParentalUnlocked()
+        
+        return if (isUnlocked) {
+            channels
+        } else {
+            channels.filter { channel ->
+                !channel.category.contains("+18", ignoreCase = true) &&
+                !channel.category.contains("adult", ignoreCase = true) &&
+                !channel.category.contains("للكبار", ignoreCase = true)
+            }
+        }
+    }
+    
     private fun filterByCategory(category: String) {
         filteredChannels = if (category == "الكل") {
             allChannels
         } else {
             allChannels.filter { it.category == category }
         }
+        
+        // تطبيق البحث أيضاً
+        if (currentSearchQuery.isNotEmpty()) {
+            filteredChannels = filteredChannels.filter { 
+                it.name.contains(currentSearchQuery, ignoreCase = true)
+            }
+        }
+        
+        adapter.updateChannels(filteredChannels)
+    }
+    
+    // دالة للبحث (يتم استدعاؤها من MainActivity)
+    fun search(query: String) {
+        currentSearchQuery = query
+        
+        filteredChannels = if (query.isEmpty()) {
+            allChannels
+        } else {
+            allChannels.filter { 
+                it.name.contains(query, ignoreCase = true) ||
+                it.category.contains(query, ignoreCase = true)
+            }
+        }
+        
         adapter.updateChannels(filteredChannels)
     }
     
@@ -106,11 +164,12 @@ class AllChannelsFragment : Fragment() {
     }
     
     private fun openPlayer(channel: Channel) {
-        prefsManager.addToWatchHistory(channel)
+        // إيجاد index القناة في القائمة الكاملة
+        val channelIndex = allChannels.indexOfFirst { it.id == channel.id }
         
         val intent = Intent(context, PlayerActivity::class.java).apply {
-            putExtra("CHANNEL_NAME", channel.name)
-            putExtra("CHANNEL_URL", channel.url)
+            putExtra("CHANNELS_JSON", Gson().toJson(allChannels))
+            putExtra("CHANNEL_INDEX", channelIndex)
         }
         startActivity(intent)
     }
