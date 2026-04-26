@@ -7,18 +7,12 @@ import com.google.gson.reflect.TypeToken
 
 class PreferencesManager(context: Context) {
     
-    private val prefs: SharedPreferences = 
-        context.getSharedPreferences("LiveoPrefs", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = context.getSharedPreferences("liveo_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
     
-    // المفضلة
-    fun saveFavorites(favorites: List<Channel>) {
-        val json = gson.toJson(favorites)
-        prefs.edit().putString("favorites", json).apply()
-    }
-    
+    // القنوات المفضلة
     fun getFavorites(): List<Channel> {
-        val json = prefs.getString("favorites", "[]") ?: "[]"
+        val json = prefs.getString("favorites", null) ?: return emptyList()
         val type = object : TypeToken<List<Channel>>() {}.type
         return gson.fromJson(json, type)
     }
@@ -26,55 +20,46 @@ class PreferencesManager(context: Context) {
     fun addToFavorites(channel: Channel) {
         val favorites = getFavorites().toMutableList()
         if (!favorites.any { it.id == channel.id }) {
-            channel.isFavorite = true
-            channel.favoriteOrder = favorites.size
             favorites.add(channel)
             saveFavorites(favorites)
         }
     }
     
-    fun removeFromFavorites(channelId: String) {
+    fun removeFromFavorites(channel: Channel) {
         val favorites = getFavorites().toMutableList()
-        favorites.removeAll { it.id == channelId }
-        // إعادة ترتيب
-        favorites.forEachIndexed { index, channel ->
-            channel.favoriteOrder = index
-        }
+        favorites.removeAll { it.id == channel.id }
         saveFavorites(favorites)
     }
     
-    fun reorderFavorites(fromPosition: Int, toPosition: Int) {
-        val favorites = getFavorites().toMutableList()
-        if (fromPosition < favorites.size && toPosition < favorites.size) {
-            val item = favorites.removeAt(fromPosition)
-            favorites.add(toPosition, item)
-            favorites.forEachIndexed { index, channel ->
-                channel.favoriteOrder = index
-            }
-            saveFavorites(favorites)
-        }
+    private fun saveFavorites(favorites: List<Channel>) {
+        val json = gson.toJson(favorites)
+        prefs.edit().putString("favorites", json).apply()
     }
     
-    // سجل المشاهدة
-    fun saveWatchHistory(history: List<Channel>) {
-        val json = gson.toJson(history.take(20)) // آخر 20 قناة
-        prefs.edit().putString("watch_history", json).apply()
+    fun isFavorite(channel: Channel): Boolean {
+        return getFavorites().any { it.id == channel.id }
     }
     
-    fun getWatchHistory(): List<Channel> {
-        val json = prefs.getString("watch_history", "[]") ?: "[]"
+    // القنوات الأخيرة
+    fun getRecent(): List<Channel> {
+        val json = prefs.getString("recent", null) ?: return emptyList()
         val type = object : TypeToken<List<Channel>>() {}.type
         return gson.fromJson(json, type)
     }
     
-    fun addToWatchHistory(channel: Channel) {
-        val history = getWatchHistory().toMutableList()
-        // إزالة إذا كانت موجودة
-        history.removeAll { it.id == channel.id }
-        // إضافة في البداية
-        channel.lastWatchedTime = System.currentTimeMillis()
-        history.add(0, channel)
-        saveWatchHistory(history.take(20))
+    fun addToRecent(channel: Channel) {
+        val recent = getRecent().toMutableList()
+        recent.removeAll { it.id == channel.id }
+        recent.add(0, channel)
+        if (recent.size > 20) {
+            recent.removeAt(recent.size - 1)
+        }
+        saveRecent(recent)
+    }
+    
+    private fun saveRecent(recent: List<Channel>) {
+        val json = gson.toJson(recent)
+        prefs.edit().putString("recent", json).apply()
     }
     
     // كود التفعيل
