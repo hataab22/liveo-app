@@ -1,5 +1,6 @@
 package com.liveo.app
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
@@ -8,13 +9,17 @@ import java.net.URL
 
 object M3UParser {
     
+    private const val TAG = "M3UParser"
+    
     suspend fun parseFromUrl(m3uUrl: String): List<Channel> = withContext(Dispatchers.IO) {
         val channels = mutableListOf<Channel>()
         
         try {
+            Log.d(TAG, "Parsing: $m3uUrl")
+            
             val connection = URL(m3uUrl).openConnection()
-            connection.connectTimeout = 30000 // 30 seconds
-            connection.readTimeout = 30000
+            connection.connectTimeout = 20000
+            connection.readTimeout = 20000
             
             BufferedReader(InputStreamReader(connection.getInputStream())).use { reader ->
                 var currentName = ""
@@ -22,48 +27,57 @@ object M3UParser {
                 var currentCategory = ""
                 var id = 0
                 var channelCount = 0
-                val maxChannels = 200 // ✅ نحمل 200 قناة بس!
+                val maxChannels = 100 // ✅ نحمل 100 قناة
                 
                 var line: String?
                 while (reader.readLine().also { line = it } != null && channelCount < maxChannels) {
                     val currentLine = line ?: continue
                     
-                    when {
-                        currentLine.startsWith("#EXTINF") -> {
-                            currentName = currentLine.substringAfter(",").trim()
-                            currentLogo = extractAttribute(currentLine, "tvg-logo")
-                            currentCategory = extractAttribute(currentLine, "group-title")
-                        }
-                        currentLine.startsWith("http") -> {
-                            channels.add(
-                                Channel(
+                    try {
+                        when {
+                            currentLine.startsWith("#EXTINF") -> {
+                                currentName = currentLine.substringAfter(",", "").trim()
+                                currentLogo = extractAttribute(currentLine, "tvg-logo")
+                                currentCategory = extractAttribute(currentLine, "group-title")
+                            }
+                            currentLine.trim().startsWith("http") -> {
+                                val channel = Channel(
                                     id = id.toString(),
-                                    name = currentName.take(100), // ✅ نحد طول الاسم
+                                    name = if (currentName.isNotEmpty()) currentName else "قناة $id",
                                     url = currentLine.trim(),
-                                    logo = currentLogo.take(500), // ✅ نحد طول اللوجو URL
-                                    category = currentCategory.ifEmpty { "عام" }.take(50)
+                                    logo = currentLogo,
+                                    category = currentCategory.ifEmpty { "عام" }
                                 )
-                            )
-                            id++
-                            channelCount++
-                            
-                            // ✅ ننظف الذاكرة كل 50 قناة
-                            if (channelCount % 50 == 0) {
-                                System.gc()
+                                channels.add(channel)
+                                id++
+                                channelCount++
+                                
+                                if (channelCount % 20 == 0) {
+                                    Log.d(TAG, "Loaded $channelCount channels...")
+                                }
                             }
                         }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing line", e)
                     }
                 }
             }
+            
+            Log.d(TAG, "Total channels: ${channels.size}")
+            
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Error parsing M3U", e)
         }
         
         channels
     }
     
     private fun extractAttribute(line: String, attribute: String): String {
-        val regex = """$attribute="([^"]*)"""".toRegex()
-        return regex.find(line)?.groupValues?.getOrNull(1) ?: ""
+        return try {
+            val regex = """$attribute="([^"]*)"""".toRegex()
+            regex.find(line)?.groupValues?.getOrNull(1) ?: ""
+        } catch (e: Exception) {
+            ""
+        }
     }
 }
