@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 if (channels.isNotEmpty()) {
-                    val adapter = ViewPagerAdapter(supportFragmentManager, channels, prefsManager)
+                    val adapter = ViewPagerAdapter(this@MainActivity, channels, prefsManager)
                     viewPager.adapter = adapter
                     tabLayout.setupWithViewPager(viewPager)
                 } else {
