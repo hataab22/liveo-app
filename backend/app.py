@@ -24,7 +24,14 @@ def init_db():
                   expires_at INTEGER,
                   is_active INTEGER,
                   customer_name TEXT,
-                  device_id TEXT)''')
+                  device_id TEXT,
+                  parental_pin TEXT)''')
+    
+    # إضافة parental_pin للجداول القديمة
+    try:
+        c.execute('ALTER TABLE codes ADD COLUMN parental_pin TEXT')
+    except sqlite3.OperationalError:
+        pass  # العمود موجود بالفعل
     
     c.execute('''CREATE TABLE IF NOT EXISTS admin
                  (username TEXT PRIMARY KEY,
@@ -74,6 +81,7 @@ def create_code():
     m3u_url = data.get('m3u_url', '')
     duration_days = int(data.get('duration_days', 30))
     customer_name = data.get('customer_name', '')
+    parental_pin = data.get('parental_pin', '')  # 🆕
     
     created_at = int(time.time())
     expires_at = created_at + (duration_days * 24 * 60 * 60)
@@ -82,10 +90,14 @@ def create_code():
     c = conn.cursor()
     
     try:
-        c.execute('''INSERT INTO codes VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                  (code, m3u_url, duration_days, created_at, expires_at, 1, customer_name, ''))
+        c.execute('''INSERT INTO codes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                  (code, m3u_url, duration_days, created_at, expires_at, 1, customer_name, '', parental_pin))
         conn.commit()
-        return jsonify({'success': True, 'code': code})
+        return jsonify({
+            'success': True, 
+            'code': code,
+            'parental_pin': parental_pin if parental_pin else None
+        })
     except sqlite3.IntegrityError:
         return jsonify({'success': False, 'message': 'الكود موجود بالفعل'})
     finally:
@@ -157,7 +169,8 @@ def activate_code():
         'm3u_url': result[1],
         'expires_at': result[4],
         'customer_name': result[6],
-        'days_left': (result[4] - current_time) // (24 * 60 * 60)
+        'days_left': (result[4] - current_time) // (24 * 60 * 60),
+        'parental_pin': result[8] if len(result) > 8 else None  # 🆕
     })
 
 @app.route('/admin/delete_code/<code>', methods=['DELETE'])
@@ -180,6 +193,51 @@ def toggle_code(code):
         conn.commit()
     conn.close()
     return jsonify({'success': True})
+
+@app.route('/admin/reset_code/<code>', methods=['POST'])
+def reset_code(code):
+    """إعادة تعيين الكود (مسح device_id) للسماح بجهاز جديد"""
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute('UPDATE codes SET device_id=NULL WHERE code=?', (code,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'تم إعادة تعيين الكود بنجاح'})
+
+@app.route('/verify_pin', methods=['POST'])
+def verify_pin():
+    """التحقق من الرقم السري للمحتوى البالغ"""
+    data = request.json
+    code = data.get('code', '').upper()
+    pin = data.get('pin', '')
+    
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    
+    result = c.execute('SELECT parental_pin FROM codes WHERE code=?', (code,)).fetchone()
+    conn.close()
+    
+    if not result:
+        return jsonify({'success': False, 'message': 'كود غير موجود'})
+    
+    stored_pin = result[0]
+    
+    # إذا لم يتم تعيين رقم سري
+    if not stored_pin or stored_pin == '':
+        return jsonify({
+            'success': True,
+            'valid': False,
+            'message': 'الحماية غير مفعلة لهذا الحساب'
+        })
+    
+    # التحقق من الرقم
+    is_valid = (stored_pin == pin)
+    
+    return jsonify({
+        'success': True,
+        'valid': is_valid,
+        'message': 'صحيح' if is_valid else 'رقم سري خاطئ'
+    })
 
 if __name__ == '__main__':
     init_db()
