@@ -26,11 +26,9 @@ object M3UParser {
                 var currentLogo = ""
                 var currentCategory = ""
                 var id = 0
-                var channelCount = 0
-                val maxChannels = 100 // ✅ نحمل 100 قناة
                 
                 var line: String?
-                while (reader.readLine().also { line = it } != null && channelCount < maxChannels) {
+                while (reader.readLine().also { line = it } != null) {
                     val currentLine = line ?: continue
                     
                     try {
@@ -41,19 +39,18 @@ object M3UParser {
                                 currentCategory = extractAttribute(currentLine, "group-title")
                             }
                             currentLine.trim().startsWith("http") -> {
-                                val channel = Channel(
-                                    id = id.toString(),
-                                    name = if (currentName.isNotEmpty()) currentName else "قناة $id",
-                                    url = currentLine.trim(),
-                                    logo = currentLogo,
-                                    category = currentCategory.ifEmpty { "عام" }
-                                )
-                                channels.add(channel)
-                                id++
-                                channelCount++
-                                
-                                if (channelCount % 20 == 0) {
-                                    Log.d(TAG, "Loaded $channelCount channels...")
+                                // ✅ تجاهل الروابط الوهمية
+                                if (!currentLine.contains("ضع_الرابط_هنا")) {
+                                    val channel = Channel(
+                                        id = id.toString(),
+                                        name = if (currentName.isNotEmpty()) currentName else "قناة $id",
+                                        url = currentLine.trim(),
+                                        logo = currentLogo,
+                                        category = currentCategory.ifEmpty { "عام" }
+                                    )
+                                    channels.add(channel)
+                                    Log.d(TAG, "Added: ${channel.name} - ${channel.category}")
+                                    id++
                                 }
                             }
                         }
