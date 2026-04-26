@@ -4,19 +4,15 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,6 +23,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchView: SearchView
     private lateinit var prefsManager: PreferencesManager
     private lateinit var expiryText: TextView
+    private lateinit var pagerAdapter: ViewPagerAdapter
     
     private var allChannels = listOf<Channel>()
     
@@ -94,16 +91,23 @@ class MainActivity : AppCompatActivity() {
             override fun onQueryTextSubmit(query: String?): Boolean = false
             
             override fun onQueryTextChange(newText: String?): Boolean {
-                // تطبيق البحث على Fragment الحالي
-                val currentFragment = supportFragmentManager.findFragmentByTag("f${viewPager.currentItem}")
-                when (currentFragment) {
-                    is AllChannelsFragment -> currentFragment.search(newText ?: "")
-                    is FavoritesFragment -> currentFragment.search(newText ?: "")
-                    is RecentFragment -> currentFragment.search(newText ?: "")
-                }
+                performSearch(newText ?: "")
                 return true
             }
         })
+    }
+    
+    private fun performSearch(query: String) {
+        if (!::pagerAdapter.isInitialized) return
+        
+        val currentPosition = viewPager.currentItem
+        val fragment = pagerAdapter.getFragment(currentPosition)
+        
+        when (fragment) {
+            is AllChannelsFragment -> fragment.search(query)
+            is FavoritesFragment -> fragment.search(query)
+            is RecentFragment -> fragment.search(query)
+        }
     }
     
     private fun loadChannels() {
@@ -138,8 +142,8 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setupViewPager() {
-        val adapter = ViewPagerAdapter(this, allChannels, prefsManager)
-        viewPager.adapter = adapter
+        pagerAdapter = ViewPagerAdapter(this, allChannels, prefsManager)
+        viewPager.adapter = pagerAdapter
         
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = when (position) {
