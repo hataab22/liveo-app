@@ -61,7 +61,7 @@ class RecentFragment : Fragment() {
                 }
                 adapter.notifyDataSetChanged()
             },
-            prefsManager = prefsManager
+            isFavorite = { channel -> prefsManager.isFavorite(channel) }
         )
         
         recyclerView.adapter = adapter
