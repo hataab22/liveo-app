@@ -36,9 +36,10 @@ class MainActivity : AppCompatActivity() {
         
         prefsManager = PreferencesManager(this)
         
-        val fromActivation = intent.getBooleanExtra("FROM_ACTIVATION", false)
+        // 🔒 قفل تلقائي عند فتح التطبيق
+        prefsManager.resetParentalLock()
         
-        if (!fromActivation && !prefsManager.isCodeValid()) {
+        if (!prefsManager.isCodeValid()) {
             navigateToActivation()
             return
         }
@@ -79,15 +80,11 @@ class MainActivity : AppCompatActivity() {
     private fun updateExpiryInfo() {
         val code = prefsManager.getActivationCode()
         if (code != null) {
-            if (code.expiryDate == 0L) {
-                expiryText.text = "غير محدود"
-            } else {
-                val daysLeft = ((code.expiryDate - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).toInt()
-                expiryText.text = "متبقي: $daysLeft يوم"
-                
-                if (daysLeft <= 3) {
-                    expiryText.setTextColor(getColor(R.color.warning))
-                }
+            val daysLeft = ((code.expiryDate - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).toInt()
+            expiryText.text = "متبقي: $daysLeft يوم"
+            
+            if (daysLeft <= 3) {
+                expiryText.setTextColor(getColor(R.color.warning))
             }
         }
     }
@@ -97,31 +94,34 @@ class MainActivity : AppCompatActivity() {
             override fun onQueryTextSubmit(query: String?): Boolean = false
             
             override fun onQueryTextChange(newText: String?): Boolean {
-                // سيتم تنفيذها في Fragments
+                // تطبيق البحث على Fragment الحالي
+                val currentFragment = supportFragmentManager.findFragmentByTag("f${viewPager.currentItem}")
+                when (currentFragment) {
+                    is AllChannelsFragment -> currentFragment.search(newText ?: "")
+                    is FavoritesFragment -> currentFragment.search(newText ?: "")
+                    is RecentFragment -> currentFragment.search(newText ?: "")
+                }
                 return true
             }
         })
     }
     
     private fun loadChannels() {
-        val m3uUrl = prefsManager.getM3uUrl()
-        
-        if (m3uUrl == null) {
-            Toast.makeText(this, "خطأ: لم يتم العثور على رابط القنوات", Toast.LENGTH_LONG).show()
+        val code = prefsManager.getActivationCode()
+        if (code == null) {
             navigateToActivation()
             return
         }
         
         CoroutineScope(Dispatchers.Main).launch {
-            try {
-                allChannels = withContext(Dispatchers.IO) {
-                    M3UParser.parseFromUrl(m3uUrl)
-                }
-                
-                if (allChannels.isEmpty()) {
-                    Toast.makeText(this@MainActivity, "لم يتم العثور على قنوات", Toast.LENGTH_LONG).show()
-                    return@launch
-                }
+            // إعادة التحقق من الكود
+            val response = ApiClient.activateCode(
+                code.code,
+                android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID)
+            )
+            
+            if (response.success && response.m3u_url != null) {
+                allChannels = M3UParser.parseFromUrl(response.m3u_url)
                 
                 // تحديث حالة المفضلة
                 val favorites = prefsManager.getFavorites()
@@ -130,8 +130,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 setupViewPager()
-            } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, "خطأ في تحميل القنوات: ${e.message}", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this@MainActivity, "انتهت صلاحية الكود", Toast.LENGTH_LONG).show()
+                navigateToActivation()
             }
         }
     }
@@ -163,9 +164,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun navigateToActivation() {
-        val intent = Intent(this, ActivationActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
+        startActivity(Intent(this, ActivationActivity::class.java))
         finish()
     }
 }
