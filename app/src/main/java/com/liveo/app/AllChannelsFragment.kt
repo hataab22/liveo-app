@@ -73,7 +73,7 @@ class AllChannelsFragment : Fragment() {
                 } else {
                     prefsManager.addToFavorites(channel)
                 }
-                adapter.notifyDataSetChanged()
+                adapter.updateChannels(filteredChannels)
             },
             isFavorite = { channel -> prefsManager.isFavorite(channel) }
         )
