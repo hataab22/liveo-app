@@ -51,12 +51,12 @@ class ViewPagerAdapter(
                 CategoryWithSubsFragment.newInstance(filtered, prefsManager, "موسيقى")
             }
             5 -> {
-                // المفضلة
-                FavoritesFragment.newInstance(allChannels, prefsManager)
+                // المفضلة (بدون allChannels)
+                FavoritesFragment.newInstance(prefsManager)
             }
             6 -> {
-                // الأخيرة
-                RecentFragment.newInstance(allChannels, prefsManager)
+                // الأخيرة (بدون allChannels)
+                RecentFragment.newInstance(prefsManager)
             }
             else -> AllChannelsFragment.newInstance(allChannels, prefsManager)
         }
