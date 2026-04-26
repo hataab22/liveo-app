@@ -11,15 +11,6 @@ class PreferencesManager(context: Context) {
         context.getSharedPreferences("LiveoPrefs", Context.MODE_PRIVATE)
     private val gson = Gson()
     
-    // M3U URL
-    fun saveM3uUrl(url: String) {
-        prefs.edit().putString("m3u_url", url).apply()
-    }
-    
-    fun getM3uUrl(): String? {
-        return prefs.getString("m3u_url", null)
-    }
-    
     // المفضلة
     fun saveFavorites(favorites: List<Channel>) {
         val json = gson.toJson(favorites)
@@ -100,26 +91,34 @@ class PreferencesManager(context: Context) {
     }
     
     fun clearActivationCode() {
-        prefs.edit()
-            .remove("activation_code")
-            .remove("m3u_url")
-            .apply()
+        prefs.edit().remove("activation_code").apply()
     }
     
     fun isCodeValid(): Boolean {
-    val code = getActivationCode()
-    val m3uUrl = getM3uUrl()
-    
-    if (code == null || m3uUrl == null || !code.isActive) {
-        return false
+        val code = getActivationCode()
+        return code != null && 
+               code.isActive && 
+               code.expiryDate > System.currentTimeMillis()
     }
     
-    // إذا expiryDate = 0 (غير محدد)، نعتبر الكود صالح
-    if (code.expiryDate == 0L) {
-        return true
+    // دوال الحماية
+    fun isParentalUnlocked(): Boolean {
+        return prefs.getBoolean("parental_unlocked", false)
     }
     
-    // إذا expiryDate محدد، نفحص التاريخ
-    return code.expiryDate > System.currentTimeMillis()
-}
+    fun setParentalUnlocked(unlocked: Boolean) {
+        prefs.edit().putBoolean("parental_unlocked", unlocked).apply()
+    }
+    
+    fun resetParentalLock() {
+        setParentalUnlocked(false)
+    }
+    
+    fun hasParentalPin(): Boolean {
+        return getActivationCode()?.parentalPin?.isNotEmpty() == true
+    }
+    
+    fun getParentalPin(): String? {
+        return getActivationCode()?.parentalPin
+    }
 }
