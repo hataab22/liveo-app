@@ -9,6 +9,7 @@ import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     
@@ -38,35 +39,29 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun loadChannels() {
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Main).launch {
             try {
-                val activation = prefsManager.getActivationCode() ?: return@launch
-                val response = ApiClient.verifyActivation(activation.code)
+                val activation = prefsManager.getActivationCode()
+                if (activation == null || activation.m3uUrl.isEmpty()) {
+                    Toast.makeText(this@MainActivity, "خطأ في التفعيل", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this@MainActivity, ActivationActivity::class.java))
+                    finish()
+                    return@launch
+                }
                 
-                if (response.success && response.m3u_url != null) {
-                    val channels = M3UParser.parseFromUrl(response.m3u_url)
-                    
-                    CoroutineScope(Dispatchers.Main).launch {
-                        if (channels.isNotEmpty()) {
-                            val adapter = ViewPagerAdapter(supportFragmentManager, channels, prefsManager)
-                            viewPager.adapter = adapter
-                            tabLayout.setupWithViewPager(viewPager)
-                        } else {
-                            Toast.makeText(this@MainActivity, "لا توجد قنوات", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                val channels = withContext(Dispatchers.IO) {
+                    M3UParser.parseFromUrl(activation.m3uUrl)
+                }
+                
+                if (channels.isNotEmpty()) {
+                    val adapter = ViewPagerAdapter(supportFragmentManager, channels, prefsManager)
+                    viewPager.adapter = adapter
+                    tabLayout.setupWithViewPager(viewPager)
                 } else {
-                    CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(this@MainActivity, "انتهت الصلاحية", Toast.LENGTH_SHORT).show()
-                        prefsManager.clearActivationCode()
-                        startActivity(Intent(this@MainActivity, ActivationActivity::class.java))
-                        finish()
-                    }
+                    Toast.makeText(this@MainActivity, "لا توجد قنوات متاحة", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                Toast.makeText(this@MainActivity, "خطأ في التحميل: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
