@@ -118,11 +118,41 @@ class MainActivity : AppCompatActivity() {
     
     private fun getFallbackChannels(): List<Channel> {
         return listOf(
-            Channel("1", "الجزيرة", "https://live-hls-web-aja.getaj.net/AJA/01.m3u8", "https://i.imgur.com/x9TQYI3.png", "أخبار"),
-            Channel("2", "العربية", "https://live.alarabiya.net/alarabiapublish/alarabiya.smil/playlist.m3u8", "https://i.imgur.com/7bRVpnu.png", "أخبار"),
-            Channel("3", "دبي", "https://dmisxthvll.cdn.mgmlcdn.com/dubaitvht/smil:dubaitv.stream.smil/playlist.m3u8", "https://i.imgur.com/ST7OiMl.png", "عام"),
-            Channel("4", "MBC 1", "https://d3o3cim6uzorb4.cloudfront.net/out/v1/0965e4d7deae49179172426cbfb3bc5e/index.m3u8", "https://i.imgur.com/V3WM43w.png", "عام"),
-            Channel("5", "دبي الرياضية", "https://dmitnthvll.cdn.mgmlcdn.com/dubaisports/smil:dubaisports.smil/playlist.m3u8", "https://i.imgur.com/qL9kYdW.png", "رياضة")
+            Channel(
+                "1", 
+                "Big Buck Bunny", 
+                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                "", 
+                "عام"
+            ),
+            Channel(
+                "2", 
+                "Elephant Dream", 
+                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                "", 
+                "عام"
+            ),
+            Channel(
+                "3", 
+                "For Bigger Blazes", 
+                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                "", 
+                "عام"
+            ),
+            Channel(
+                "4", 
+                "Sintel", 
+                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+                "", 
+                "عام"
+            ),
+            Channel(
+                "5", 
+                "Tears of Steel", 
+                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+                "", 
+                "عام"
+            )
         )
     }
 }
