@@ -2,113 +2,97 @@ package com.liveo.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
-import android.view.View
-import android.widget.*
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.*
 
 class ActivationActivity : AppCompatActivity() {
     
     private lateinit var codeInput: EditText
     private lateinit var activateButton: Button
-    private lateinit var loadingIndicator: ProgressBar
-    private lateinit var errorText: TextView
+    private lateinit var progressBar: ProgressBar
     private lateinit var prefsManager: PreferencesManager
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_activation)
         
-        supportActionBar?.hide()
-        
         prefsManager = PreferencesManager(this)
         
-        setupViews()
-        checkExistingCode()
-    }
-    
-    private fun setupViews() {
         codeInput = findViewById(R.id.codeInput)
         activateButton = findViewById(R.id.activateButton)
-        loadingIndicator = findViewById(R.id.loadingIndicator)
-        errorText = findViewById(R.id.errorText)
+        progressBar = findViewById(R.id.progressBar)
         
         activateButton.setOnClickListener {
-            activateCode()
+            val code = codeInput.text.toString().trim()
+            if (code.isEmpty()) {
+                Toast.makeText(this, "الرجاء إدخال كود التفعيل", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            activateCode(code)
         }
     }
     
-    private fun checkExistingCode() {
-        if (prefsManager.isCodeValid()) {
-            navigateToMain()
-        }
-    }
-    
-    private fun activateCode() {
-        val code = codeInput.text.toString().trim()
+    private fun activateCode(code: String) {
+        progressBar.isVisible = true
+        activateButton.isEnabled = false
         
-        if (code.isEmpty()) {
-            showError("الرجاء إدخال كود التفعيل")
-            return
-        }
-        
-        showLoading(true)
-        errorText.visibility = View.GONE
-        
-        val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+        val deviceId = android.provider.Settings.Secure.getString(
+            contentResolver,
+            android.provider.Settings.Secure.ANDROID_ID
+        )
         
         CoroutineScope(Dispatchers.Main).launch {
             val response = ApiClient.activateCode(code, deviceId)
             
-            withContext(Dispatchers.Main) {
-                showLoading(false)
+            progressBar.isVisible = false
+            activateButton.isEnabled = true
+            
+            if (response.success && response.m3u_url != null) {
+                // حفظ معلومات الكود
+                val activationCode = ActivationCode(
+                    code = response.code ?: code,
+                    expiryDate = response.expires_at ?: 0,
+                    isActive = true,
+                    customerName = response.customer_name ?: "",
+                    parentalPin = response.parental_pin
+                )
+                prefsManager.saveActivationCode(activationCode)
                 
-                if (response.success && response.m3u_url != null) {
-                    // حفظ معلومات الكود
-                    val activationCode = ActivationCode(
-                        code = response.code ?: code,
-                        expiryDate = response.expires_at ?: 0,
-                        isActive = true,
-                        customerName = response.customer_name ?: "",
-                        parentalPin = response.parental_pin
-                    )
-                    prefsManager.saveActivationCode(activationCode)
-                    
-                    // جلب القنوات
-                    loadChannels(response.m3u_url)
-                } else {
-                    showError(response.message ?: "خطأ في التفعيل")
-                }
+                // جلب القنوات
+                loadChannels(response.m3u_url)
+            } else {
+                showError(response.message ?: "خطأ في التفعيل")
             }
         }
     }
     
     private suspend fun loadChannels(m3uUrl: String) {
-        val channels = M3UParser.parseFromUrl(m3uUrl)
-        
-        if (channels.isNotEmpty()) {
-            Toast.makeText(this, "تم التفعيل! ${channels.size} قناة", Toast.LENGTH_SHORT).show()
-            navigateToMain()
-        } else {
-            showError("لم يتم العثور على قنوات")
+        try {
+            val channels = withContext(Dispatchers.IO) {
+                M3UParser.parseFromUrl(m3uUrl)
+            }
+            
+            if (channels.isNotEmpty()) {
+                Toast.makeText(this, "تم التفعيل بنجاح", Toast.LENGTH_SHORT).show()
+                navigateToMain()
+            } else {
+                showError("لم يتم العثور على قنوات")
+            }
+        } catch (e: Exception) {
+            showError("خطأ في تحميل القنوات: ${e.message}")
         }
     }
     
     private fun showError(message: String) {
-        errorText.text = message
-        errorText.visibility = View.VISIBLE
-    }
-    
-    private fun showLoading(show: Boolean) {
-        loadingIndicator.visibility = if (show) View.VISIBLE else View.GONE
-        activateButton.isEnabled = !show
-        codeInput.isEnabled = !show
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
     
     private fun navigateToMain() {
