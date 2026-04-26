@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val url = "https://drive.google.com/uc?export=download&id=1EED9-uQPohWSo2mPYtT9Ji9hr7wBzg4A"
-                val parser = M3UParser()
+                val parser = M3UParser(url)
                 allChannels = parser.parse(url)
                 
                 withContext(Dispatchers.Main) {
