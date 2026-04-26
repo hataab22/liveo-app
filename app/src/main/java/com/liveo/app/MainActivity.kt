@@ -2,141 +2,163 @@ package com.liveo.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Menu
 import android.view.MenuItem
-import android.widget.*
-import androidx.appcompat.app.AlertDialog
+import android.widget.Toast
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.viewpager2.widget.ViewPager2
+import androidx.appcompat.widget.SearchView
+import androidx.appcompat.widget.Toolbar
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
+import androidx.viewpager.widget.ViewPager
+import com.google.android.material.navigation.NavigationView
 import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
     
-    private lateinit var viewPager: ViewPager2
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var viewPager: ViewPager
     private lateinit var tabLayout: TabLayout
-    private lateinit var prefsManager: PreferencesManager
-    private lateinit var expiryText: TextView
+    private lateinit var searchView: SearchView
     
+    private lateinit var prefsManager: PreferencesManager
     private var allChannels = listOf<Channel>()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
         
         prefsManager = PreferencesManager(this)
         
-        // 🔒 قفل تلقائي عند فتح التطبيق
+        // إعادة تعيين قفل الرقابة الأبوية
         prefsManager.resetParentalLock()
         
-        if (!prefsManager.isCodeValid()) {
+        // التحقق من التفعيل
+        val activation = prefsManager.getActivationCode()
+        if (activation == null || !activation.isActive) {
             navigateToActivation()
             return
         }
         
-        setupViews()
+        setContentView(R.layout.activity_main)
+        
+        setupUI()
         loadChannels()
     }
     
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-    
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_refresh -> {
-                loadChannels()
-                true
-            }
-            R.id.action_logout -> {
-                logout()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-    
-    private fun setupViews() {
+    private fun setupUI() {
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        
+        drawerLayout = findViewById(R.id.drawer_layout)
+        val toggle = ActionBarDrawerToggle(
+            this, drawerLayout, toolbar,
+            R.string.navigation_drawer_open,
+            R.string.navigation_drawer_close
+        )
+        drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+        
+        val navigationView = findViewById<NavigationView>(R.id.nav_view)
+        navigationView.setNavigationItemSelectedListener(this)
+        
         viewPager = findViewById(R.id.viewPager)
         tabLayout = findViewById(R.id.tabLayout)
-        expiryText = findViewById(R.id.expiryText)
+        searchView = findViewById(R.id.searchView)
         
-        updateExpiryInfo()
-    }
-    
-    private fun updateExpiryInfo() {
-        val code = prefsManager.getActivationCode()
-        if (code != null) {
-            val daysLeft = ((code.expiryDate - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)).toInt()
-            expiryText.text = "متبقي: $daysLeft يوم"
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean = false
             
-            if (daysLeft <= 3) {
-                expiryText.setTextColor(getColor(R.color.warning))
+            override fun onQueryTextChange(newText: String?): Boolean {
+                filterChannels(newText ?: "")
+                return true
             }
-        }
+        })
     }
     
     private fun loadChannels() {
-        val code = prefsManager.getActivationCode()
-        if (code == null) {
-            navigateToActivation()
-            return
-        }
-        
         CoroutineScope(Dispatchers.Main).launch {
-            val response = ApiClient.activateCode(
-                code.code,
-                android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID)
-            )
-            
-            if (response.success && response.m3u_url != null) {
-                allChannels = M3UParser.parseFromUrl(response.m3u_url)
-                
-                val favorites = prefsManager.getFavorites()
-                allChannels.forEach { channel ->
-                    channel.isFavorite = favorites.any { it.id == channel.id }
+            try {
+                val activation = prefsManager.getActivationCode()
+                if (activation == null) {
+                    navigateToActivation()
+                    return@launch
                 }
                 
-                setupViewPager()
-            } else {
-                Toast.makeText(this@MainActivity, "انتهت صلاحية الكود", Toast.LENGTH_LONG).show()
-                navigateToActivation()
+                val response = withContext(Dispatchers.IO) {
+                    ApiClient.verifyActivation(activation.code)
+                }
+                
+                if (response.success && response.m3u_url != null) {
+                    allChannels = withContext(Dispatchers.IO) {
+                        M3UParser.parseFromUrl(response.m3u_url)
+                    }
+                    
+                    if (allChannels.isNotEmpty()) {
+                        setupViewPager(allChannels)
+                    } else {
+                        Toast.makeText(this@MainActivity, "لا توجد قنوات متاحة", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this@MainActivity, "انتهت صلاحية التفعيل", Toast.LENGTH_LONG).show()
+                    prefsManager.clearActivationCode()
+                    navigateToActivation()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "خطأ في تحميل القنوات", Toast.LENGTH_SHORT).show()
             }
         }
     }
     
-    private fun setupViewPager() {
-        val adapter = ViewPagerAdapter(this, allChannels, prefsManager)
+    private fun setupViewPager(channels: List<Channel>) {
+        val adapter = ViewPagerAdapter(supportFragmentManager, channels, prefsManager)
         viewPager.adapter = adapter
-        
-        TabLayoutMediator(tabLayout, viewPager) { tab, position ->
-            tab.text = when (position) {
-                0 -> "الكل"
-                1 -> "المفضلة"
-                2 -> "الأخيرة"
-                else -> "الكل"
-            }
-        }.attach()
+        tabLayout.setupWithViewPager(viewPager)
     }
     
-    private fun logout() {
-        AlertDialog.Builder(this)
-            .setTitle("تسجيل خروج")
-            .setMessage("هل تريد تسجيل الخروج؟")
-            .setPositiveButton("نعم") { _, _ ->
-                prefsManager.clearActivationCode()
-                navigateToActivation()
+    private fun filterChannels(query: String) {
+        val currentFragment = (viewPager.adapter as? ViewPagerAdapter)
+            ?.getItem(viewPager.currentItem)
+        
+        when (currentFragment) {
+            is AllChannelsFragment -> currentFragment.search(query)
+            is FavoritesFragment -> currentFragment.search(query)
+            is RecentFragment -> currentFragment.search(query)
+        }
+    }
+    
+    override fun onNavigationItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.nav_parental_controls -> {
+                val intent = Intent(this, ParentalControlActivity::class.java)
+                startActivity(intent)
             }
-            .setNegativeButton("لا", null)
-            .show()
+            R.id.nav_settings -> {
+                Toast.makeText(this, "الإعدادات قريباً", Toast.LENGTH_SHORT).show()
+            }
+            R.id.nav_about -> {
+                Toast.makeText(this, "Liveo IPTV v2.0", Toast.LENGTH_SHORT).show()
+            }
+        }
+        drawerLayout.closeDrawer(GravityCompat.START)
+        return true
     }
     
     private fun navigateToActivation() {
-        startActivity(Intent(this, ActivationActivity::class.java))
+        val intent = Intent(this, ActivationActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
         finish()
+    }
+    
+    override fun onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START)
+        } else {
+            super.onBackPressed()
+        }
     }
 }
