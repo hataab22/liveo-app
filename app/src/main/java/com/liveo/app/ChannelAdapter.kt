@@ -42,15 +42,15 @@ class ChannelAdapter(
             holder.channelImage.setImageResource(R.drawable.ic_tv)
         }
         
-        if (isFavorite != null) {
+        if (isFavorite != null && onFavoriteClick != null) {
             val isFav = isFavorite.invoke(channel)
             holder.favoriteIcon.setImageResource(
                 if (isFav) R.drawable.ic_favorite_filled 
                 else R.drawable.ic_favorite_border
             )
-            
+            holder.favoriteIcon.visibility = View.VISIBLE
             holder.favoriteIcon.setOnClickListener {
-                onFavoriteClick?.invoke(channel)
+                onFavoriteClick.invoke(channel)
             }
         } else {
             holder.favoriteIcon.visibility = View.GONE
