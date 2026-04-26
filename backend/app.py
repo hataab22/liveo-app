@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3
 import hashlib
@@ -49,12 +49,8 @@ def generate_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
 @app.route('/')
-def home():
-    return jsonify({
-        'status': 'running',
-        'app': 'Liveo Backend',
-        'version': '1.0'
-    })
+def index():
+    return jsonify({'app': 'Liveo Backend', 'status': 'running', 'version': '1.0'})
 
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
@@ -66,13 +62,11 @@ def admin_login():
     
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-    admin = c.execute('SELECT * FROM admin WHERE username=? AND password_hash=?', 
+    result = c.execute('SELECT * FROM admin WHERE username=? AND password_hash=?', 
                       (username, password_hash)).fetchone()
     conn.close()
     
-    if admin:
-        return jsonify({'success': True, 'message': 'تم تسجيل الدخول'})
-    return jsonify({'success': False, 'message': 'خطأ في البيانات'})
+    return jsonify({'success': result is not None})
 
 @app.route('/admin/create_code', methods=['POST'])
 def create_code():
@@ -99,20 +93,18 @@ def create_code():
             'parental_pin': parental_pin if parental_pin else None
         })
     except sqlite3.IntegrityError:
-        return jsonify({'success': False, 'message': 'الكود موجود بالفعل'})
+        return jsonify({'success': False, 'message': 'الكود موجود مسبقاً'})
     finally:
         conn.close()
 
 @app.route('/admin/codes', methods=['GET'])
-def get_all_codes():
+def get_codes():
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
     codes = c.execute('SELECT * FROM codes ORDER BY created_at DESC').fetchall()
     conn.close()
     
     result = []
-    current_time = int(time.time())
-    
     for code in codes:
         result.append({
             'code': code[0],
@@ -122,15 +114,13 @@ def get_all_codes():
             'expires_at': code[4],
             'is_active': code[5],
             'customer_name': code[6],
-            'device_id': code[7],
-            'days_left': max(0, (code[4] - current_time) // (24 * 60 * 60)),
-            'is_expired': code[4] < current_time
+            'device_id': code[7]
         })
     
     return jsonify(result)
 
 @app.route('/activate', methods=['POST'])
-def activate_code():
+def activate():
     data = request.json
     code = data.get('code', '').upper()
     device_id = data.get('device_id', '')
@@ -146,20 +136,25 @@ def activate_code():
     
     current_time = int(time.time())
     
+    # التحقق من الصلاحية
     if result[4] < current_time:
         conn.close()
-        return jsonify({'success': False, 'message': 'الكود منتهي الصلاحية'})
+        return jsonify({'success': False, 'message': 'انتهت صلاحية الكود'})
     
     if result[5] == 0:
         conn.close()
         return jsonify({'success': False, 'message': 'الكود معطل'})
     
-    if result[7] == '':
-        c.execute('UPDATE codes SET device_id=? WHERE code=?', (device_id, code))
-        conn.commit()
-    elif result[7] != device_id:
+    # التحقق من الجهاز
+    stored_device_id = result[7]
+    if stored_device_id and stored_device_id != device_id:
         conn.close()
         return jsonify({'success': False, 'message': 'الكود مستخدم على جهاز آخر'})
+    
+    # حفظ معرف الجهاز
+    if not stored_device_id:
+        c.execute('UPDATE codes SET device_id=? WHERE code=?', (device_id, code))
+        conn.commit()
     
     conn.close()
     
@@ -238,6 +233,11 @@ def verify_pin():
         'valid': is_valid,
         'message': 'صحيح' if is_valid else 'رقم سري خاطئ'
     })
+
+@app.route('/admin-panel/index.html')
+def admin_panel():
+    """صفحة لوحة التحكم"""
+    return send_from_directory('admin-panel', 'index.html')
 
 if __name__ == '__main__':
     init_db()
