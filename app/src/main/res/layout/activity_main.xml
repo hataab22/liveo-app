@@ -63,8 +63,8 @@
         app:tabIndicatorColor="@color/liveo_cyan"
         app:tabIndicatorHeight="3dp" />
 
-    <!-- ViewPager -->
-    <androidx.viewpager2.widget.ViewPager2
+    <!-- ViewPager (تم التغيير من ViewPager2 إلى ViewPager) -->
+    <androidx.viewpager.widget.ViewPager
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
