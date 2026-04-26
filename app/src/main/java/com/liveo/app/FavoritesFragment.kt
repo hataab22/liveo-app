@@ -8,7 +8,6 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.gson.Gson
 
 class FavoritesFragment : Fragment() {
     
@@ -31,62 +30,41 @@ class FavoritesFragment : Fragment() {
     ): View {
         recyclerView = RecyclerView(requireContext())
         setupRecyclerView()
-        loadFavorites()
         return recyclerView
-    }
-    
-    private fun setupRecyclerView() {
-        val spanCount = when {
-            resources.displayMetrics.widthPixels >= 2160 -> 6
-            resources.displayMetrics.widthPixels >= 1920 -> 5
-            resources.displayMetrics.widthPixels >= 1280 -> 4
-            resources.displayMetrics.widthPixels >= 960 -> 3
-            else -> 2
-        }
-        
-        recyclerView.layoutManager = GridLayoutManager(requireContext(), spanCount)
-    }
-    
-    private fun loadFavorites() {
-        val favorites = prefsManager.getFavorites()
-        
-        adapter = ChannelAdapter(
-            channels = favorites,
-            onChannelClick = { channel -> openPlayer(channel) },
-            onFavoriteClick = { channel ->
-                prefsManager.removeFromFavorites(channel)
-                loadFavorites()
-            },
-            isFavorite = { channel -> true }
-        )
-        
-        recyclerView.adapter = adapter
-    }
-    
-    fun search(query: String) {
-        val favorites = prefsManager.getFavorites()
-        val filtered = if (query.isEmpty()) {
-            favorites
-        } else {
-            favorites.filter { 
-                it.name.contains(query, ignoreCase = true)
-            }
-        }
-        adapter.updateChannels(filtered)
-    }
-    
-    private fun openPlayer(channel: Channel) {
-        prefsManager.addToRecent(channel)
-        
-        val intent = Intent(requireContext(), PlayerActivity::class.java)
-        intent.putExtra("channel_name", channel.name)
-        intent.putExtra("channel_url", channel.url)
-        intent.putExtra("all_channels", Gson().toJson(prefsManager.getFavorites()))
-        startActivity(intent)
     }
     
     override fun onResume() {
         super.onResume()
-        loadFavorites()
+        adapter.updateChannels(prefsManager.getFavorites())
+    }
+    
+    private fun setupRecyclerView() {
+        val spanCount = when {
+            resources.displayMetrics.widthPixels >= 1920 -> 4
+            resources.displayMetrics.widthPixels >= 1280 -> 3
+            else -> 3
+        }
+        
+        recyclerView.layoutManager = GridLayoutManager(requireContext(), spanCount)
+        
+        adapter = ChannelAdapter(
+            channels = prefsManager.getFavorites(),
+            onChannelClick = { channel ->
+                prefsManager.addToRecent(channel)
+                val intent = Intent(requireContext(), PlayerActivity::class.java).apply {
+                    putExtra("CHANNEL_NAME", channel.name)
+                    putExtra("CHANNEL_URL", channel.url)
+                    putExtra("CHANNEL_ID", channel.id)
+                }
+                startActivity(intent)
+            },
+            onFavoriteClick = { channel ->
+                prefsManager.removeFromFavorites(channel)
+                adapter.updateChannels(prefsManager.getFavorites())
+            },
+            isFavorite = { true }
+        )
+        
+        recyclerView.adapter = adapter
     }
 }
