@@ -12,24 +12,35 @@ class ViewPagerAdapter(
     
     private val tabs = listOf(
         "الكل",
+        "بث مباشر",
+        "أفلام",
+        "مسلسلات",
+        "موسيقى",
         "المفضلة",
         "الأخيرة"
     )
     
     override fun getItem(position: Int): Fragment {
         return when (position) {
-            0 -> {
-                // الكل
-                AllChannelsFragment.newInstance(allChannels, prefsManager)
-            }
+            0 -> AllChannelsFragment.newInstance(allChannels, prefsManager)
             1 -> {
-                // المفضلة
-                FavoritesFragment.newInstance(prefsManager)
+                val filtered = allChannels.filter { !isMovie(it) && !isSeries(it) && !isMusic(it) }
+                CategoryWithSubsFragment.newInstance(filtered, prefsManager, "بث مباشر")
             }
             2 -> {
-                // الأخيرة
-                RecentFragment.newInstance(prefsManager)
+                val filtered = allChannels.filter { isMovie(it) }
+                CategoryWithSubsFragment.newInstance(filtered, prefsManager, "أفلام")
             }
+            3 -> {
+                val filtered = allChannels.filter { isSeries(it) }
+                CategoryWithSubsFragment.newInstance(filtered, prefsManager, "مسلسلات")
+            }
+            4 -> {
+                val filtered = allChannels.filter { isMusic(it) }
+                CategoryWithSubsFragment.newInstance(filtered, prefsManager, "موسيقى")
+            }
+            5 -> FavoritesFragment.newInstance(prefsManager)
+            6 -> RecentFragment.newInstance(prefsManager)
             else -> AllChannelsFragment.newInstance(allChannels, prefsManager)
         }
     }
@@ -37,4 +48,19 @@ class ViewPagerAdapter(
     override fun getCount(): Int = tabs.size
     
     override fun getPageTitle(position: Int): CharSequence = tabs[position]
+    
+    private fun isMovie(channel: Channel): Boolean {
+        val cat = channel.category.lowercase()
+        return cat.contains("أفلام") || cat.contains("movies") || cat.contains("cinema") || cat.contains("film")
+    }
+    
+    private fun isSeries(channel: Channel): Boolean {
+        val cat = channel.category.lowercase()
+        return cat.contains("مسلسل") || cat.contains("series") || cat.contains("show")
+    }
+    
+    private fun isMusic(channel: Channel): Boolean {
+        val cat = channel.category.lowercase()
+        return cat.contains("موسيقى") || cat.contains("music") || cat.contains("أغاني")
+    }
 }
