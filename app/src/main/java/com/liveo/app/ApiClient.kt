@@ -8,9 +8,7 @@ import java.net.URL
 
 object ApiClient {
     
-    // Backend URL
     private const val BASE_URL = "https://liveo-backend.onrender.com"
-    
     private val gson = Gson()
     
     data class ActivateRequest(val code: String, val device_id: String)
