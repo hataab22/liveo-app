@@ -2,6 +2,7 @@ package com.liveo.app
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +21,8 @@ class AllChannelsFragment : Fragment() {
     private var filteredChannels = listOf<Channel>()
     
     companion object {
+        private const val TAG = "AllChannelsFragment"
+        
         fun newInstance(channels: List<Channel>, prefsManager: PreferencesManager): AllChannelsFragment {
             val fragment = AllChannelsFragment()
             fragment.allChannels = filterProtectedContent(channels, prefsManager)
@@ -94,12 +97,20 @@ class AllChannelsFragment : Fragment() {
     }
     
     private fun openPlayer(channel: Channel) {
+        Log.d(TAG, "Opening player for: ${channel.name}")
+        Log.d(TAG, "URL: ${channel.url}")
+        
         prefsManager.addToRecent(channel)
         
-        val intent = Intent(requireContext(), PlayerActivity::class.java)
-        intent.putExtra("channel_name", channel.name)
-        intent.putExtra("channel_url", channel.url)
-        intent.putExtra("all_channels", Gson().toJson(allChannels))
+        val intent = Intent(requireContext(), PlayerActivity::class.java).apply {
+            // ✅ استخدم نفس الأسماء اللي في PlayerActivity (حرف كبير)
+            putExtra("CHANNEL_NAME", channel.name)
+            putExtra("CHANNEL_URL", channel.url)
+            putExtra("CHANNEL_ID", channel.id)
+            putExtra("all_channels", Gson().toJson(allChannels))
+        }
+        
+        Log.d(TAG, "Starting PlayerActivity...")
         startActivity(intent)
     }
 }
