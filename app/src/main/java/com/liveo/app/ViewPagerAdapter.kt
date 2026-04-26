@@ -23,11 +23,11 @@ class ViewPagerAdapter(
     override fun getItem(position: Int): Fragment {
         return when (position) {
             0 -> {
-                // الكل (الفلترة داخل Fragment)
+                // الكل
                 AllChannelsFragment.newInstance(allChannels, prefsManager)
             }
             1 -> {
-                // بث مباشر (بدون فلترة +18، الفلترة داخل Fragment)
+                // بث مباشر
                 val filtered = allChannels.filter { channel ->
                     !isMovie(channel) &&
                     !isSeries(channel) &&
@@ -36,12 +36,12 @@ class ViewPagerAdapter(
                 CategoryWithSubsFragment.newInstance(filtered, prefsManager, "بث مباشر")
             }
             2 -> {
-                // أفلام (نمرر كل الأفلام بما فيها +18)
+                // أفلام
                 val filtered = allChannels.filter { isMovie(it) }
                 CategoryWithSubsFragment.newInstance(filtered, prefsManager, "أفلام")
             }
             3 -> {
-                // مسلسلات (نمرر كل المسلسلات بما فيها +18)
+                // مسلسلات
                 val filtered = allChannels.filter { isSeries(it) }
                 CategoryWithSubsFragment.newInstance(filtered, prefsManager, "مسلسلات")
             }
@@ -65,16 +65,6 @@ class ViewPagerAdapter(
     override fun getCount(): Int = tabs.size
     
     override fun getPageTitle(position: Int): CharSequence = tabs[position]
-    
-    // ✅ دوال التصنيف
-    private fun isAdultContent(channel: Channel): Boolean {
-        val category = channel.category.lowercase()
-        val name = channel.name.lowercase()
-        return category.contains("+18") ||
-               category.contains("adult") ||
-               category.contains("للكبار") ||
-               name.contains("+18")
-    }
     
     private fun isMovie(channel: Channel): Boolean {
         val category = channel.category.lowercase()
