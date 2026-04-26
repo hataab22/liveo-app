@@ -1,1 +1,185 @@
-
+{
+  "version": "2.0",
+  "categories": [
+    {
+      "id": "channels",
+      "name": "القنوات",
+      "icon": "📺",
+      "subcategories": [
+        {
+          "id": "channels_all",
+          "name": "الكل",
+          "icon": "📺",
+          "group_title": "all",
+          "protected": false
+        },
+        {
+          "id": "channels_news",
+          "name": "الأخبار",
+          "icon": "📰",
+          "group_title": "أخبار",
+          "protected": false
+        },
+        {
+          "id": "channels_sports",
+          "name": "الرياضة",
+          "icon": "⚽",
+          "group_title": "رياضة",
+          "protected": false
+        },
+        {
+          "id": "channels_docs",
+          "name": "وثائقيات",
+          "icon": "📚",
+          "group_title": "وثائقيات",
+          "protected": false
+        },
+        {
+          "id": "channels_music_shows",
+          "name": "أغاني",
+          "icon": "🎵",
+          "group_title": "أغاني",
+          "protected": false
+        },
+        {
+          "id": "channels_mbc",
+          "name": "MBC",
+          "icon": "📺",
+          "group_title": "MBC",
+          "protected": false
+        },
+        {
+          "id": "channels_osn",
+          "name": "OSN",
+          "icon": "📺",
+          "group_title": "OSN",
+          "protected": false
+        },
+        {
+          "id": "channels_gulf",
+          "name": "الخليج",
+          "icon": "🌍",
+          "group_title": "الخليج",
+          "protected": false
+        },
+        {
+          "id": "channels_syria",
+          "name": "سوريا",
+          "icon": "🇸🇾",
+          "group_title": "سوريا",
+          "protected": false
+        },
+        {
+          "id": "channels_adult",
+          "name": "للكبار",
+          "icon": "🔞",
+          "group_title": "قنوات +18",
+          "protected": true
+        }
+      ]
+    },
+    {
+      "id": "movies",
+      "name": "الأفلام",
+      "icon": "🎬",
+      "subcategories": [
+        {
+          "id": "movies_foreign",
+          "name": "أجنبي",
+          "icon": "🌍",
+          "group_title": "أفلام أجنبية",
+          "protected": false
+        },
+        {
+          "id": "movies_arabic",
+          "name": "عربي",
+          "icon": "🇸🇦",
+          "group_title": "أفلام عربية",
+          "protected": false
+        },
+        {
+          "id": "movies_mixed",
+          "name": "منوعات",
+          "icon": "🎭",
+          "group_title": "أفلام منوعة",
+          "protected": false
+        },
+        {
+          "id": "movies_adult",
+          "name": "للكبار",
+          "icon": "🔞",
+          "group_title": "أفلام +18",
+          "protected": true
+        }
+      ]
+    },
+    {
+      "id": "series",
+      "name": "المسلسلات",
+      "icon": "📺",
+      "subcategories": [
+        {
+          "id": "series_foreign",
+          "name": "أجنبي",
+          "icon": "🌍",
+          "group_title": "مسلسلات أجنبية",
+          "protected": false
+        },
+        {
+          "id": "series_arabic",
+          "name": "عربي",
+          "icon": "🇸🇦",
+          "group_title": "مسلسلات عربية",
+          "protected": false
+        },
+        {
+          "id": "series_turkish",
+          "name": "تركي",
+          "icon": "🇹🇷",
+          "group_title": "مسلسلات تركية",
+          "protected": false
+        },
+        {
+          "id": "series_indian",
+          "name": "هندي",
+          "icon": "🇮🇳",
+          "group_title": "مسلسلات هندية",
+          "protected": false
+        }
+      ]
+    },
+    {
+      "id": "music",
+      "name": "الموسيقى",
+      "icon": "🎵",
+      "subcategories": [
+        {
+          "id": "music_arabic",
+          "name": "عربي",
+          "icon": "🇸🇦",
+          "group_title": "موسيقى عربية",
+          "protected": false
+        },
+        {
+          "id": "music_foreign",
+          "name": "أجنبي",
+          "icon": "🌍",
+          "group_title": "موسيقى أجنبية",
+          "protected": false
+        }
+      ]
+    },
+    {
+      "id": "favorites",
+      "name": "المفضلة",
+      "icon": "⭐",
+      "type": "special"
+    },
+    {
+      "id": "recent",
+      "name": "الأخيرة",
+      "icon": "⏱️",
+      "type": "special"
+    }
+  ]
+}
