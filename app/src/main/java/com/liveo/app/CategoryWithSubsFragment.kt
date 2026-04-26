@@ -56,60 +56,54 @@ class CategoryWithSubsFragment : Fragment() {
             setBackgroundColor(Color.parseColor("#121212"))
         }
         
-        // Sub-categories
         mainLayout.addView(createSubCategoriesView())
-        
-        // RecyclerView
         setupRecyclerView()
         mainLayout.addView(recyclerView)
-        
-        // Load all channels initially
         filterBySubCategory("الكل")
         
         return mainLayout
     }
     
     private fun createSubCategoriesView(): HorizontalScrollView {
-    val subCategories = when (categoryType) {
-        "بث مباشر" -> {
-            val base = mutableListOf("الكل", "رياضة", "أخبار", "MBC", "أطفال")
-            if (prefsManager.isParentalUnlocked()) {
-                base.add("للكبار")
+        val subCategories = when (categoryType) {
+            "بث مباشر" -> {
+                val base = mutableListOf("الكل", "رياضة", "أخبار", "MBC", "أطفال")
+                if (prefsManager.isParentalUnlocked()) {
+                    base.add("للكبار")
+                }
+                base.toList()
             }
-            base.toList()
-        }
-        "أفلام" -> {
-            val base = mutableListOf("الكل", "عربي", "أجنبي")
-            if (prefsManager.isParentalUnlocked()) {
-                base.add("للكبار")
+            "أفلام" -> {
+                val base = mutableListOf("الكل", "عربي", "أجنبي")
+                if (prefsManager.isParentalUnlocked()) {
+                    base.add("للكبار")
+                }
+                base.toList()
             }
-            base.toList()
+            "مسلسلات" -> listOf("الكل", "عربي", "تركي", "هندي")
+            "موسيقى" -> listOf("الكل", "عربي", "أجنبي")
+            else -> listOf("الكل")
         }
-        "مسلسلات" -> listOf("الكل", "عربي", "تركي", "هندي")
-        "موسيقى" -> listOf("الكل", "عربي", "أجنبي")
-        else -> listOf("الكل")
+        
+        val buttonsLayout = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val padding = 16
+            setPadding(padding, padding, padding, padding)
+        }
+        
+        subCategories.forEach { subCat ->
+            buttonsLayout.addView(createButton(subCat))
+        }
+        
+        return HorizontalScrollView(requireContext()).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setBackgroundColor(Color.parseColor("#1E1E1E"))
+            addView(buttonsLayout)
+        }
     }
-    
-    val buttonsLayout = LinearLayout(requireContext()).apply {
-        orientation = LinearLayout.HORIZONTAL
-        val padding = 16
-        setPadding(padding, padding, padding, padding)
-    }
-    
-    subCategories.forEach { subCat ->
-        buttonsLayout.addView(createButton(subCat))
-    }
-    
-    return HorizontalScrollView(requireContext()).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        )
-        setBackgroundColor(Color.parseColor("#1E1E1E"))
-        addView(buttonsLayout)
-    }
-}
-
     
     private fun createButton(text: String): TextView {
         return TextView(requireContext()).apply {
@@ -198,11 +192,9 @@ class CategoryWithSubsFragment : Fragment() {
     
     private fun setupRecyclerView() {
         val spanCount = when {
-            resources.displayMetrics.widthPixels >= 2160 -> 6
-            resources.displayMetrics.widthPixels >= 1920 -> 5
-            resources.displayMetrics.widthPixels >= 1280 -> 4
-            resources.displayMetrics.widthPixels >= 960 -> 3
-            else -> 2
+            resources.displayMetrics.widthPixels >= 1920 -> 4
+            resources.displayMetrics.widthPixels >= 1280 -> 3
+            else -> 3
         }
         
         recyclerView = RecyclerView(requireContext()).apply {
