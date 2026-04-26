@@ -234,6 +234,11 @@
             color: #fff;
         }
 
+        .btn-reset {
+            background: #FFA500;
+            color: #fff;
+        }
+
         .success-msg {
             background: #00FF88;
             color: #000;
@@ -299,6 +304,14 @@
                 <label>اسم العميل (اختياري)</label>
                 <input type="text" id="customerName" placeholder="محمد أحمد">
             </div>
+            <div class="form-group">
+                <label>🔒 رقم سري للمحتوى البالغ (اختياري)</label>
+                <input type="text" id="parentalPin" 
+                       placeholder="4-6 أرقام"
+                       pattern="[0-9]{4,6}"
+                       maxlength="6">
+                <small style="color: #888;">اتركه فارغاً لعدم تفعيل الحماية</small>
+            </div>
             <button onclick="createCode()">إنشاء كود</button>
         </div>
 
@@ -355,6 +368,7 @@
             const m3u_url = document.getElementById('m3uUrl').value;
             const duration_days = document.getElementById('duration').value;
             const customer_name = document.getElementById('customerName').value;
+            const parental_pin = document.getElementById('parentalPin').value || null;
 
             if (!m3u_url) {
                 alert('الرجاء إدخال رابط M3U');
@@ -364,12 +378,27 @@
             fetch(`${API_URL}/admin/create_code`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({code, m3u_url, duration_days, customer_name})
+                body: JSON.stringify({code, m3u_url, duration_days, customer_name, parental_pin})
             })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
                     const msg = document.getElementById('successMsg');
+                    let message = `✅ تم إنشاء الكود: ${data.code}`;
+                    if (data.parental_pin) {
+                        message += `\n🔒 الرقم السري: ${data.parental_pin}`;
+                    }
+                    msg.textContent = message;
+                    msg.style.display = 'block';
+                    alert(message);
+                    loadCodes();
+                    document.getElementById('newCode').value = '';
+                    document.getElementById('m3uUrl').value = '';
+                    document.getElementById('customerName').value = '';
+                    document.getElementById('parentalPin').value = '';
+                    setTimeout(() => msg.style.display = 'none', 5000);
+                }
+            });
                     msg.textContent = `✅ تم إنشاء الكود: ${data.code}`;
                     msg.style.display = 'block';
                     setTimeout(() => msg.style.display = 'none', 5000);
@@ -424,6 +453,7 @@
                             <button class="action-btn btn-toggle" onclick="toggleCode('${code.code}')">
                                 ${code.is_active ? 'تعطيل' : 'تفعيل'}
                             </button>
+                            <button class="action-btn btn-reset" onclick="resetCode('${code.code}')">إعادة تعيين</button>
                             <button class="action-btn btn-delete" onclick="deleteCode('${code.code}')">حذف</button>
                         </td>
                     </tr>
@@ -436,6 +466,20 @@
             if (confirm(`هل تريد حذف الكود: ${code}؟`)) {
                 fetch(`${API_URL}/admin/delete_code/${code}`, {method: 'DELETE'})
                 .then(() => loadCodes());
+            }
+        }
+
+        function resetCode(code) {
+            if (confirm(`هل تريد إعادة تعيين الكود: ${code}؟\n\nسيتم مسح الجهاز المرتبط ويمكن استخدام الكود على جهاز جديد.`)) {
+                fetch(`${API_URL}/admin/reset_code/${code}`, {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message || 'تم إعادة التعيين بنجاح');
+                    loadCodes();
+                })
+                .catch(error => {
+                    alert('حدث خطأ أثناء إعادة التعيين');
+                });
             }
         }
 
