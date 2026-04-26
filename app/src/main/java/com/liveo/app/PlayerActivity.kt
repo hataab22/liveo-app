@@ -1,6 +1,7 @@
 package com.liveo.app
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -21,6 +22,10 @@ class PlayerActivity : AppCompatActivity() {
     private var channelName: String = ""
     private var channelUrl: String = ""
     
+    companion object {
+        private const val TAG = "PlayerActivity"
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
@@ -30,64 +35,105 @@ class PlayerActivity : AppCompatActivity() {
         channelName = intent.getStringExtra("CHANNEL_NAME") ?: ""
         channelUrl = intent.getStringExtra("CHANNEL_URL") ?: ""
         
+        Log.d(TAG, "Channel: $channelName")
+        Log.d(TAG, "URL: $channelUrl")
+        
+        if (channelUrl.isEmpty()) {
+            Toast.makeText(this, "لا يوجد رابط للقناة", Toast.LENGTH_LONG).show()
+            Log.e(TAG, "Empty URL!")
+            finish()
+            return
+        }
+        
         setupViews()
         initializePlayer()
     }
     
     private fun setupViews() {
-        playerView = findViewById(R.id.playerView)
-        loadingIndicator = findViewById(R.id.loadingIndicator)
-        channelNameText = findViewById(R.id.channelNameText)
-        
-        channelNameText.text = channelName
+        try {
+            playerView = findViewById(R.id.playerView)
+            loadingIndicator = findViewById(R.id.loadingIndicator)
+            channelNameText = findViewById(R.id.channelNameText)
+            
+            channelNameText.text = channelName
+            loadingIndicator.visibility = View.VISIBLE
+            
+            Log.d(TAG, "Views setup completed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up views", e)
+            Toast.makeText(this, "خطأ في واجهة المشغل", Toast.LENGTH_LONG).show()
+        }
     }
     
     private fun initializePlayer() {
-        player = ExoPlayer.Builder(this).build().also { exoPlayer ->
-            playerView.player = exoPlayer
+        try {
+            Log.d(TAG, "Initializing player...")
             
-            val mediaItem = MediaItem.fromUri(channelUrl)
-            exoPlayer.setMediaItem(mediaItem)
-            exoPlayer.prepare()
-            exoPlayer.playWhenReady = true
-            
-            exoPlayer.addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    when (playbackState) {
-                        Player.STATE_BUFFERING -> {
-                            loadingIndicator.visibility = View.VISIBLE
-                        }
-                        Player.STATE_READY -> {
-                            loadingIndicator.visibility = View.GONE
-                        }
-                        Player.STATE_ENDED -> {
-                            loadingIndicator.visibility = View.GONE
-                        }
-                        Player.STATE_IDLE -> {
-                            loadingIndicator.visibility = View.GONE
+            player = ExoPlayer.Builder(this).build().also { exoPlayer ->
+                playerView.player = exoPlayer
+                
+                val mediaItem = MediaItem.fromUri(channelUrl)
+                exoPlayer.setMediaItem(mediaItem)
+                
+                Log.d(TAG, "MediaItem set, preparing...")
+                exoPlayer.prepare()
+                exoPlayer.playWhenReady = true
+                
+                exoPlayer.addListener(object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        when (playbackState) {
+                            Player.STATE_BUFFERING -> {
+                                Log.d(TAG, "STATE_BUFFERING")
+                                loadingIndicator.visibility = View.VISIBLE
+                            }
+                            Player.STATE_READY -> {
+                                Log.d(TAG, "STATE_READY - Playing!")
+                                loadingIndicator.visibility = View.GONE
+                                Toast.makeText(this@PlayerActivity, "جاري التشغيل...", Toast.LENGTH_SHORT).show()
+                            }
+                            Player.STATE_ENDED -> {
+                                Log.d(TAG, "STATE_ENDED")
+                                loadingIndicator.visibility = View.GONE
+                            }
+                            Player.STATE_IDLE -> {
+                                Log.d(TAG, "STATE_IDLE")
+                                loadingIndicator.visibility = View.GONE
+                            }
                         }
                     }
-                }
-                
-                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    loadingIndicator.visibility = View.GONE
-                    Toast.makeText(
-                        this@PlayerActivity,
-                        "خطأ في التشغيل: ${error.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            })
+                    
+                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                        loadingIndicator.visibility = View.GONE
+                        Log.e(TAG, "Player error: ${error.errorCodeName}", error)
+                        Log.e(TAG, "Error message: ${error.message}")
+                        Log.e(TAG, "Error cause: ${error.cause}")
+                        
+                        Toast.makeText(
+                            this@PlayerActivity,
+                            "خطأ في التشغيل: ${error.errorCodeName}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                })
+            }
+            
+            Log.d(TAG, "Player initialized successfully")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing player", e)
+            Toast.makeText(this, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
     
     override fun onStop() {
         super.onStop()
+        Log.d(TAG, "onStop - releasing player")
         releasePlayer()
     }
     
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(TAG, "onDestroy - releasing player")
         releasePlayer()
     }
     
