@@ -1,6 +1,8 @@
 package com.liveo.app
 
+import android.content.Intent
 import android.graphics.Color
+import android.util.Log
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -16,6 +18,10 @@ class ChannelAdapter(
     private val onFavoriteClick: ((Channel) -> Unit)? = null,
     private val isFavorite: ((Channel) -> Boolean)? = null
 ) : RecyclerView.Adapter<ChannelAdapter.ChannelViewHolder>() {
+
+    companion object {
+        private const val TAG = "ChannelAdapter"
+    }
 
     class ChannelViewHolder(val container: FrameLayout) : RecyclerView.ViewHolder(container) {
         val channelImage: ImageView
@@ -111,6 +117,24 @@ class ChannelAdapter(
         }
         
         holder.container.setOnClickListener {
+            Log.d(TAG, "=================================")
+            Log.d(TAG, "Channel clicked: ${channel.name}")
+            Log.d(TAG, "Channel URL: ${channel.url}")
+            Log.d(TAG, "Channel ID: ${channel.id}")
+            Log.d(TAG, "=================================")
+            
+            // ✅ نفتح المشغل مباشرة
+            val context = holder.container.context
+            val intent = Intent(context, PlayerActivity::class.java).apply {
+                putExtra("CHANNEL_NAME", channel.name)
+                putExtra("CHANNEL_URL", channel.url)
+                putExtra("CHANNEL_ID", channel.id)
+            }
+            
+            Log.d(TAG, "Starting PlayerActivity...")
+            context.startActivity(intent)
+            
+            // ✅ نستدعي الـ callback كمان (للمفضلة والأخيرة)
             onChannelClick(channel)
         }
     }
