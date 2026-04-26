@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liveo Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            direction: rtl;
+        }
+
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 400px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 5px;
+        }
+
+        .logo p {
+            color: #888;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .admin-panel {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+        }
+
+        .logout-btn {
+            width: auto;
+            padding: 10px 20px;
+            background: #f44336;
+        }
+
+        .logout-btn:hover {
+            background: #d32f2f;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .stat-card p {
+            font-size: 32px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .create-code {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+        }
+
+        .form-group small {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .codes-list {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-active {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .status-inactive {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .action-btn {
+            padding: 5px 10px;
+            margin: 0 2px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .btn-delete {
+            background: #f44336;
+        }
+
+        .btn-toggle {
+            background: #ff9800;
+        }
+
+        .btn-reset {
+            background: #FFA500;
+        }
+
+        .success-msg {
+            background: #4caf50;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        #adminPanel {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container" id="loginPage">
+        <div class="login-box">
+            <div class="logo">
+                <h1>Liveo</h1>
+                <p>Admin Panel</p>
+            </div>
+            <input type="text" id="username" placeholder="اسم المستخدم" value="admin">
+            <input type="password" id="password" placeholder="كلمة المرور" value="admin123">
+            <button onclick="login()">دخول</button>
+        </div>
+    </div>
+
+    <div class="admin-panel" id="adminPanel">
+        <div class="header">
+            <h1>🎛️ Liveo Admin</h1>
+            <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>إجمالي الأكواد</h3>
+                <p id="totalCodes">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>أكواد نشطة</h3>
+                <p id="activeCodes">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>أكواد منتهية</h3>
+                <p id="expiredCodes">0</p>
+            </div>
+        </div>
+
+        <div class="create-code">
+            <h2>➕ إنشاء كود جديد</h2>
+            <div id="successMsg" class="success-msg"></div>
+            <div class="form-group">
+                <label>كود التفعيل (اتركه فارغاً للإنشاء التلقائي)</label>
+                <input type="text" id="newCode" placeholder="مثال: ABC12345">
+            </div>
+            <div class="form-group">
+                <label>رابط M3U</label>
+                <input type="text" id="m3uUrl" placeholder="https://example.com/playlist.m3u" required>
+            </div>
+            <div class="form-group">
+                <label>المدة (بالأيام)</label>
+                <input type="number" id="duration" value="30" required>
+            </div>
+            <div class="form-group">
+                <label>اسم العميل (اختياري)</label>
+                <input type="text" id="customerName" placeholder="محمد أحمد">
+            </div>
+            <div class="form-group">
+                <label>🔒 رقم سري للمحتوى البالغ (اختياري)</label>
+                <input type="text" id="parentalPin" 
+                       placeholder="4-6 أرقام"
+                       pattern="[0-9]{4,6}"
+                       maxlength="6">
+                <small style="color: #888;">اتركه فارغاً لعدم تفعيل الحماية</small>
+            </div>
+            <button onclick="createCode()">إنشاء كود</button>
+        </div>
+
+        <div class="codes-list">
+            <h2>📋 قائمة الأكواد</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>الكود</th>
+                        <th>العميل</th>
+                        <th>المدة</th>
+                        <th>تاريخ الإنشاء</th>
+                        <th>تاريخ الانتهاء</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="codesTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://liveo-backend.onrender.com';
+
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            console.log('Attempting login...', username);
+
+            fetch(`${API_URL}/admin/login`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            })
+            .then(res => {
+                console.log('Response status:', res.status);
+                return res.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('adminPanel').style.display = 'block';
+                    loadCodes();
+                } else {
+                    alert('خطأ في البيانات');
+                }
+            })
+            .catch(error => {
+                console.error('Login error:', error);
+                alert('خطأ في الاتصال بالسيرفر: ' + error.message);
+            });
+        }
+
+        function logout() {
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+
+        function createCode() {
+            const code = document.getElementById('newCode').value;
+            const m3u_url = document.getElementById('m3uUrl').value;
+            const duration_days = document.getElementById('duration').value;
+            const customer_name = document.getElementById('customerName').value;
+            const parental_pin = document.getElementById('parentalPin').value || null;
+
+            if (!m3u_url) {
+                alert('الرجاء إدخال رابط M3U');
+                return;
+            }
+
+            fetch(`${API_URL}/admin/create_code`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code, m3u_url, duration_days, customer_name, parental_pin})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const msg = document.getElementById('successMsg');
+                    let message = `✅ تم إنشاء الكود: ${data.code}`;
+                    if (data.parental_pin) {
+                        message += `\n🔒 الرقم السري: ${data.parental_pin}`;
+                    }
+                    msg.textContent = message;
+                    msg.style.display = 'block';
+                    alert(message);
+                    loadCodes();
+                    document.getElementById('newCode').value = '';
+                    document.getElementById('m3uUrl').value = '';
+                    document.getElementById('customerName').value = '';
+                    document.getElementById('parentalPin').value = '';
+                    setTimeout(() => msg.style.display = 'none', 5000);
+                }
+            })
+            .catch(error => {
+                alert('خطأ: ' + error.message);
+            });
+        }
+
+        function loadCodes() {
+            fetch(`${API_URL}/admin/codes`)
+            .then(res => res.json())
+            .then(data => {
+                const table = document.getElementById('codesTable');
+                table.innerHTML = '';
+                
+                let totalCodes = 0;
+                let activeCodes = 0;
+                let expiredCodes = 0;
+
+                data.forEach(code => {
+                    totalCodes++;
+                    const now = Date.now();
+                    const isExpired = code.expires_at < now;
+                    
+                    if (code.is_active && !isExpired) activeCodes++;
+                    if (isExpired) expiredCodes++;
+
+                    const row = table.insertRow();
+                    row.innerHTML = `
+                        <td>${code.code}</td>
+                        <td>${code.customer_name || '-'}</td>
+                        <td>${code.duration_days} يوم</td>
+                        <td>${new Date(code.created_at).toLocaleDateString('ar')}</td>
+                        <td>${new Date(code.expires_at).toLocaleDateString('ar')}</td>
+                        <td class="${code.is_active ? 'status-active' : 'status-inactive'}">
+                            ${code.is_active ? 'نشط' : 'معطل'}
+                        </td>
+                        <td>
+                            <button class="action-btn btn-reset" onclick="resetCode('${code.code}')">إعادة تعيين</button>
+                            <button class="action-btn btn-toggle" onclick="toggleCode('${code.code}')">${code.is_active ? 'تعطيل' : 'تفعيل'}</button>
+                            <button class="action-btn btn-delete" onclick="deleteCode('${code.code}')">حذف</button>
+                        </td>
+                    `;
+                });
+
+                document.getElementById('totalCodes').textContent = totalCodes;
+                document.getElementById('activeCodes').textContent = activeCodes;
+                document.getElementById('expiredCodes').textContent = expiredCodes;
+            })
+            .catch(error => {
+                console.error('Error loading codes:', error);
+            });
+        }
+
+        function deleteCode(code) {
+            if (confirm(`هل تريد حذف الكود: ${code}؟`)) {
+                fetch(`${API_URL}/admin/delete_code/${code}`, {method: 'DELETE'})
+                .then(() => loadCodes())
+                .catch(error => alert('خطأ: ' + error.message));
+            }
+        }
+
+        function resetCode(code) {
+            if (confirm(`هل تريد إعادة تعيين الكود: ${code}؟\n\nسيتم مسح الجهاز المرتبط ويمكن استخدام الكود على جهاز جديد.`)) {
+                fetch(`${API_URL}/admin/reset_code/${code}`, {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message || 'تم إعادة التعيين بنجاح');
+                    loadCodes();
+                })
+                .catch(error => {
+                    alert('حدث خطأ أثناء إعادة التعيين');
+                });
+            }
+        }
+
+        function toggleCode(code) {
+            fetch(`${API_URL}/admin/toggle_code/${code}`, {method: 'POST'})
+            .then(() => loadCodes())
+            .catch(error => alert('خطأ: ' + error.message));
+        }
+    </script>
+</body>
+</html>
