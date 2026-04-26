@@ -11,15 +11,12 @@ import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class CategoryWithSubsFragment : Fragment() {
     
-    private lateinit var mainLayout: LinearLayout
-    private lateinit var subCategoriesLayout: LinearLayout
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ChannelAdapter
     private lateinit var prefsManager: PreferencesManager
@@ -50,7 +47,7 @@ class CategoryWithSubsFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        mainLayout = LinearLayout(requireContext()).apply {
+        val mainLayout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -59,21 +56,36 @@ class CategoryWithSubsFragment : Fragment() {
             setBackgroundColor(Color.parseColor("#121212"))
         }
         
-        setupSubCategories()
-        setupRecyclerView()
+        // Sub-categories
+        mainLayout.addView(createSubCategoriesView())
         
-        mainLayout.addView(createSubCategoriesScrollView())
+        // RecyclerView
+        setupRecyclerView()
         mainLayout.addView(recyclerView)
         
+        // Load all channels initially
         filterBySubCategory("الكل")
         
         return mainLayout
     }
     
-    private fun createSubCategoriesScrollView(): HorizontalScrollView {
-        subCategoriesLayout = LinearLayout(requireContext()).apply {
+    private fun createSubCategoriesView(): HorizontalScrollView {
+        val subCategories = when (categoryType) {
+            "بث مباشر" -> listOf("الكل", "رياضة", "أخبار", "MBC", "أطفال")
+            "أفلام" -> listOf("الكل", "عربي", "أجنبي", "للكبار")
+            "مسلسلات" -> listOf("الكل", "عربي", "تركي", "هندي")
+            "موسيقى" -> listOf("الكل", "عربي", "أجنبي")
+            else -> listOf("الكل")
+        }
+        
+        val buttonsLayout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(16)
+            val padding = 16
+            setPadding(padding, padding, padding, padding)
+        }
+        
+        subCategories.forEach { subCat ->
+            buttonsLayout.addView(createButton(subCat))
         }
         
         return HorizontalScrollView(requireContext()).apply {
@@ -82,201 +94,93 @@ class CategoryWithSubsFragment : Fragment() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
             setBackgroundColor(Color.parseColor("#1E1E1E"))
-            addView(subCategoriesLayout)
+            addView(buttonsLayout)
         }
     }
     
-    private fun setupSubCategories() {
-        val subCategories = when (categoryType) {
-            "بث مباشر" -> listOf("الكل", "رياضة", "أخبار", "وثائقيات", "MBC", "OSN", "أطفال")
-            "أفلام" -> listOf("الكل", "عربي", "أجنبي", "مصري", "أكشن", "كوميدي", "للكبار")
-            "مسلسلات" -> listOf("الكل", "عربي", "تركي", "هندي", "أجنبي", "كوري")
-            "موسيقى" -> listOf("الكل", "عربي", "أجنبي")
-            else -> listOf("الكل")
-        }
-        
-        subCategoriesLayout.removeAllViews()
-        
-        subCategories.forEach { subCat ->
-            val button = createSubCategoryButton(subCat)
-            subCategoriesLayout.addView(button)
-        }
-    }
-    
-    private fun createSubCategoryButton(subCategory: String): TextView {
+    private fun createButton(text: String): TextView {
         return TextView(requireContext()).apply {
-            text = subCategory
+            this.text = text
             textSize = 14f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(32, 16, 32, 16)
+            val padding = 24
+            setPadding(padding * 2, padding, padding * 2, padding)
             
-            layoutParams = LinearLayout.LayoutParams(
+            val params = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(8, 8, 8, 8)
-            }
+            )
+            params.setMargins(8, 8, 8, 8)
+            layoutParams = params
             
             setBackgroundColor(
-                if (subCategory == selectedSubCategory) 
+                if (text == selectedSubCategory) 
                     Color.parseColor("#9C27B0") 
                 else 
                     Color.parseColor("#2E2E2E")
             )
             
             setOnClickListener {
-                selectedSubCategory = subCategory
-                filterBySubCategory(subCategory)
-                setupSubCategories()
+                selectedSubCategory = text
+                filterBySubCategory(text)
+                (parent as? ViewGroup)?.let { parent ->
+                    for (i in 0 until parent.childCount) {
+                        (parent.getChildAt(i) as? TextView)?.setBackgroundColor(
+                            Color.parseColor("#2E2E2E")
+                        )
+                    }
+                }
+                setBackgroundColor(Color.parseColor("#9C27B0"))
             }
         }
     }
     
     private fun filterBySubCategory(subCategory: String) {
-        Log.d(TAG, "Filtering $categoryType by: $subCategory")
-        
         filteredChannels = when {
             subCategory == "الكل" -> {
-                if (prefsManager.isParentalUnlocked()) {
-                    allChannels
-                } else {
-                    allChannels.filter { !isAdultContent(it) }
-                }
+                if (prefsManager.isParentalUnlocked()) allChannels
+                else allChannels.filter { !isAdult(it) }
             }
-            
-            categoryType == "بث مباشر" && subCategory == "رياضة" -> {
-                allChannels.filter { 
-                    (it.category.contains("رياضة", true) || it.category.contains("sport", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
+            subCategory == "رياضة" -> allChannels.filter { 
+                it.category.contains("رياضة", true) || it.category.contains("sport", true)
             }
-            categoryType == "بث مباشر" && subCategory == "أخبار" -> {
-                allChannels.filter { 
-                    (it.category.contains("أخبار", true) || it.category.contains("news", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
+            subCategory == "أخبار" -> allChannels.filter { 
+                it.category.contains("أخبار", true) || it.category.contains("news", true)
             }
-            categoryType == "بث مباشر" && subCategory == "وثائقيات" -> {
-                allChannels.filter { 
-                    (it.category.contains("وثائق", true) || it.category.contains("document", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
+            subCategory == "MBC" -> allChannels.filter { 
+                it.category.contains("MBC", true) || it.name.contains("MBC", true)
             }
-            categoryType == "بث مباشر" && subCategory == "MBC" -> {
-                allChannels.filter { 
-                    (it.category.contains("MBC", true) || it.name.contains("MBC", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
+            subCategory == "أطفال" -> allChannels.filter { 
+                it.category.contains("أطفال", true) || it.category.contains("kids", true)
             }
-            categoryType == "بث مباشر" && subCategory == "OSN" -> {
-                allChannels.filter { 
-                    (it.category.contains("OSN", true) || it.name.contains("OSN", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
+            subCategory == "عربي" -> allChannels.filter { 
+                it.category.contains("عربي", true)
             }
-            categoryType == "بث مباشر" && subCategory == "أطفال" -> {
-                allChannels.filter { 
-                    it.category.contains("أطفال", true) || it.category.contains("kids", true)
-                }
+            subCategory == "أجنبي" -> allChannels.filter { 
+                it.category.contains("أجنبي", true)
             }
-            
-            categoryType == "أفلام" && subCategory == "عربي" -> {
-                allChannels.filter { 
-                    (it.category.contains("عربي", true) || it.category.contains("arabic", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
+            subCategory == "تركي" -> allChannels.filter { 
+                it.category.contains("تركي", true) || it.category.contains("turkish", true)
             }
-            categoryType == "أفلام" && subCategory == "أجنبي" -> {
-                allChannels.filter { 
-                    (it.category.contains("أجنبي", true) || it.category.contains("foreign", true) || it.category.contains("hollywood", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
+            subCategory == "هندي" -> allChannels.filter { 
+                it.category.contains("هندي", true) || it.category.contains("hindi", true)
             }
-            categoryType == "أفلام" && subCategory == "مصري" -> {
-                allChannels.filter { 
-                    (it.category.contains("مصري", true) || it.category.contains("egypt", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
+            subCategory == "للكبار" -> {
+                if (prefsManager.isParentalUnlocked()) 
+                    allChannels.filter { isAdult(it) }
+                else emptyList()
             }
-            categoryType == "أفلام" && subCategory == "أكشن" -> {
-                allChannels.filter { 
-                    (it.category.contains("أكشن", true) || it.category.contains("action", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
-            }
-            categoryType == "أفلام" && subCategory == "كوميدي" -> {
-                allChannels.filter { 
-                    (it.category.contains("كوميدي", true) || it.category.contains("comedy", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
-            }
-            categoryType == "أفلام" && subCategory == "للكبار" -> {
-                if (prefsManager.isParentalUnlocked()) {
-                    allChannels.filter { isAdultContent(it) }
-                } else {
-                    emptyList()
-                }
-            }
-            
-            categoryType == "مسلسلات" && subCategory == "عربي" -> {
-                allChannels.filter { 
-                    it.category.contains("عربي", true) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
-            }
-            categoryType == "مسلسلات" && subCategory == "تركي" -> {
-                allChannels.filter { 
-                    (it.category.contains("تركي", true) || it.category.contains("turkish", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
-            }
-            categoryType == "مسلسلات" && subCategory == "هندي" -> {
-                allChannels.filter { 
-                    (it.category.contains("هندي", true) || it.category.contains("hindi", true) || it.category.contains("bollywood", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
-            }
-            categoryType == "مسلسلات" && subCategory == "أجنبي" -> {
-                allChannels.filter { 
-                    it.category.contains("أجنبي", true) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
-            }
-            categoryType == "مسلسلات" && subCategory == "كوري" -> {
-                allChannels.filter { 
-                    (it.category.contains("كوري", true) || it.category.contains("korean", true)) &&
-                    (prefsManager.isParentalUnlocked() || !isAdultContent(it))
-                }
-            }
-            
-            categoryType == "موسيقى" && subCategory == "عربي" -> {
-                allChannels.filter { it.category.contains("عربي", true) }
-            }
-            categoryType == "موسيقى" && subCategory == "أجنبي" -> {
-                allChannels.filter { it.category.contains("أجنبي", true) }
-            }
-            
-            else -> {
-                if (prefsManager.isParentalUnlocked()) {
-                    allChannels
-                } else {
-                    allChannels.filter { !isAdultContent(it) }
-                }
-            }
+            else -> allChannels
         }
         
-        Log.d(TAG, "Filtered: ${filteredChannels.size} channels")
+        Log.d(TAG, "$categoryType -> $subCategory: ${filteredChannels.size} channels")
         adapter.updateChannels(filteredChannels)
     }
     
-    private fun isAdultContent(channel: Channel): Boolean {
-        val category = channel.category.lowercase()
-        val name = channel.name.lowercase()
-        return category.contains("+18") ||
-               category.contains("adult") ||
-               category.contains("للكبار") ||
-               name.contains("+18")
+    private fun isAdult(channel: Channel): Boolean {
+        val cat = channel.category.lowercase()
+        return cat.contains("+18") || cat.contains("adult") || cat.contains("للكبار")
     }
     
     private fun setupRecyclerView() {
@@ -298,7 +202,15 @@ class CategoryWithSubsFragment : Fragment() {
         
         adapter = ChannelAdapter(
             channels = filteredChannels,
-            onChannelClick = { channel -> openPlayer(channel) },
+            onChannelClick = { channel ->
+                prefsManager.addToRecent(channel)
+                val intent = Intent(requireContext(), PlayerActivity::class.java).apply {
+                    putExtra("CHANNEL_NAME", channel.name)
+                    putExtra("CHANNEL_URL", channel.url)
+                    putExtra("CHANNEL_ID", channel.id)
+                }
+                startActivity(intent)
+            },
             onFavoriteClick = { channel ->
                 if (prefsManager.isFavorite(channel)) {
                     prefsManager.removeFromFavorites(channel)
@@ -311,17 +223,5 @@ class CategoryWithSubsFragment : Fragment() {
         )
         
         recyclerView.adapter = adapter
-    }
-    
-    private fun openPlayer(channel: Channel) {
-        prefsManager.addToRecent(channel)
-        
-        val intent = Intent(requireContext(), PlayerActivity::class.java).apply {
-            putExtra("CHANNEL_NAME", channel.name)
-            putExtra("CHANNEL_URL", channel.url)
-            putExtra("CHANNEL_ID", channel.id)
-        }
-        
-        startActivity(intent)
     }
 }
