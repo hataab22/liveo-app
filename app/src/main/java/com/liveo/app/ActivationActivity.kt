@@ -2,7 +2,6 @@ package com.liveo.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -10,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ActivationActivity : AppCompatActivity() {
     
@@ -18,104 +16,64 @@ class ActivationActivity : AppCompatActivity() {
     private lateinit var activateButton: Button
     private lateinit var prefsManager: PreferencesManager
     
-    private val TAG = "ActivationActivity"
-    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        prefsManager = PreferencesManager(this)
-        
-        // التحقق إذا كان التفعيل موجود بالفعل
-        val existingActivation = prefsManager.getActivationCode()
-        if (existingActivation != null && existingActivation.isActive) {
-            Log.d(TAG, "التفعيل موجود بالفعل، الانتقال للصفحة الرئيسية")
-            navigateToMain()
-            return
-        }
-        
         setContentView(R.layout.activity_activation)
         
+        prefsManager = PreferencesManager(this)
         codeInput = findViewById(R.id.codeInput)
         activateButton = findViewById(R.id.activateButton)
         
         activateButton.setOnClickListener {
             val code = codeInput.text.toString().trim()
-            if (code.isEmpty()) {
-                Toast.makeText(this, "الرجاء إدخال كود التفعيل", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+            if (code.isNotEmpty()) {
+                activateCode(code)
+            } else {
+                Toast.makeText(this, "أدخل الكود", Toast.LENGTH_SHORT).show()
             }
-            activateCode(code)
         }
     }
     
     private fun activateCode(code: String) {
-        Log.d(TAG, "بدء التفعيل للكود: $code")
-        
         activateButton.isEnabled = false
         activateButton.text = "جاري التفعيل..."
         
-        val deviceId = android.provider.Settings.Secure.getString(
-            contentResolver,
-            android.provider.Settings.Secure.ANDROID_ID
-        )
+        val deviceId = android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID)
         
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                Log.d(TAG, "إرسال طلب التفعيل للسيرفر...")
+                val response = ApiClient.activateCode(code, deviceId)
                 
-                val response = withContext(Dispatchers.IO) {
-                    ApiClient.activateCode(code, deviceId)
-                }
-                
-                Log.d(TAG, "استجابة السيرفر: success=${response.success}, message=${response.message}")
-                
-                if (response.success) {
-                    // حفظ بيانات التفعيل
-                    val activationCode = ActivationCode(
-                        code = response.code ?: code,
-                        expiryDate = response.expires_at ?: 0,
-                        isActive = true,
-                        customerName = response.customer_name ?: "",
-                        parentalPin = response.parental_pin
-                    )
-                    
-                    prefsManager.saveActivationCode(activationCode)
-                    Log.d(TAG, "تم حفظ بيانات التفعيل بنجاح")
-                    
-                    Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح ✓", Toast.LENGTH_SHORT).show()
-                    
-                    // الانتقال للصفحة الرئيسية
-                    Log.d(TAG, "الانتقال للصفحة الرئيسية...")
-                    navigateToMain()
-                } else {
-                    activateButton.isEnabled = true
-                    activateButton.text = "تفعيل"
-                    showError(response.message ?: "خطأ في التفعيل")
+                CoroutineScope(Dispatchers.Main).launch {
+                    if (response.success) {
+                        val activationCode = ActivationCode(
+                            code = response.code ?: code,
+                            expiryDate = response.expires_at ?: 0,
+                            isActive = true,
+                            customerName = response.customer_name ?: "",
+                            parentalPin = response.parental_pin
+                        )
+                        prefsManager.saveActivationCode(activationCode)
+                        
+                        Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح ✓", Toast.LENGTH_SHORT).show()
+                        
+                        val intent = Intent(this@ActivationActivity, MainActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        activateButton.isEnabled = true
+                        activateButton.text = "تفعيل"
+                        Toast.makeText(this@ActivationActivity, response.message ?: "فشل التفعيل", Toast.LENGTH_LONG).show()
+                    }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "خطأ في التفعيل", e)
-                activateButton.isEnabled = true
-                activateButton.text = "تفعيل"
-                showError("خطأ في الاتصال: ${e.message}")
+                CoroutineScope(Dispatchers.Main).launch {
+                    activateButton.isEnabled = true
+                    activateButton.text = "تفعيل"
+                    Toast.makeText(this@ActivationActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
-    }
-    
-    private fun showError(message: String) {
-        Log.e(TAG, "خطأ: $message")
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-    }
-    
-    private fun navigateToMain() {
-        Log.d(TAG, "navigateToMain() called")
-        
-        val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        
-        Log.d(TAG, "Starting MainActivity...")
-        startActivity(intent)
-        
-        Log.d(TAG, "Finishing ActivationActivity...")
-        finish()
     }
 }
