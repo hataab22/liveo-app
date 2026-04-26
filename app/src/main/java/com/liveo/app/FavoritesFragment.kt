@@ -57,7 +57,7 @@ class FavoritesFragment : Fragment() {
                 prefsManager.removeFromFavorites(channel)
                 loadFavorites()
             },
-            prefsManager = prefsManager
+            isFavorite = { channel -> prefsManager.isFavorite(channel) }
         )
         
         recyclerView.adapter = adapter
