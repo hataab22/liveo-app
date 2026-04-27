@@ -121,7 +121,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 val url = "https://drive.google.com/uc?export=download&id=1EED9-uQPohWSo2mPYtT9Ji9hr7wBzg4A"
                 val parser = M3UParser(url)
-                allChannels = parser.parse(url)
+                allChannels = parser.parse()
                 
                 withContext(Dispatchers.Main) {
                     setupViewPager()
