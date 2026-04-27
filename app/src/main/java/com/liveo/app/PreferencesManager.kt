@@ -101,3 +101,4 @@ class PreferencesManager(context: Context) {
         prefs.edit().putString(KEY_RECENT, gson.toJson(recent)).apply()
     }
 }
+	
