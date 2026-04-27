@@ -87,7 +87,7 @@ class ActivationActivity : AppCompatActivity() {
                             val parentalPin = json.optString("parental_pin", "")
                             val hasAdultAccess = parentalPin.isNotEmpty()
                             
-                            prefsManager.saveActivation(code, hasAdultAccess)
+                            prefsManager.saveActivation(code, hasAdultAccess, parentalPin)
                             Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح!", Toast.LENGTH_SHORT).show()
                             navigateToMain()
                         } else {
