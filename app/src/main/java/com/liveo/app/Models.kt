@@ -25,7 +25,10 @@ data class ActivationResponse(
 
 // PIN Verification
 data class PinVerificationResponse(
-    val isValid: Boolean
+    val success: Boolean = false,
+    val valid: Boolean = false,
+    val message: String = "",
+    val isValid: Boolean = false
 )
 
 // Activation API Interface
