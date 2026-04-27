@@ -55,7 +55,7 @@ class ActivationActivity : AppCompatActivity() {
                 val response = api.validateCode(code)
                 
                 withContext(Dispatchers.Main) {
-                    if (response.isValid) {
+                    if (response.activationCode.isValid) {
                         prefsManager.saveActivationCode(code)
                         prefsManager.setActivated(true)
                         Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح", Toast.LENGTH_SHORT).show()
