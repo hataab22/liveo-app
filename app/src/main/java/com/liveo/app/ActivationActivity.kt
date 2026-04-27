@@ -2,7 +2,7 @@ package com.liveo.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import android.provider.Settings
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -20,8 +21,6 @@ class ActivationActivity : AppCompatActivity() {
     private lateinit var codeInput: EditText
     private lateinit var activateButton: Button
     private lateinit var prefsManager: PreferencesManager
-    
-    private val BASE_URL = "https://liveo-backend.onrender.com"
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,65 +53,62 @@ class ActivationActivity : AppCompatActivity() {
     
     private fun validateCode(code: String) {
         CoroutineScope(Dispatchers.IO).launch {
-            val endpoints = listOf(
-                "/api/validate?code=$code",
-                "/validate?code=$code",
-                "/api/codes/validate?code=$code",
-                "/check?code=$code",
-                "/api/check?code=$code",
-                "/codes/validate?code=$code"
-            )
-            
-            var success = false
-            var adultAccess = false
-            
-            for (endpoint in endpoints) {
-                try {
-                    val url = URL("$BASE_URL$endpoint")
-                    val connection = url.openConnection() as HttpURLConnection
-                    connection.requestMethod = "GET"
-                    connection.connectTimeout = 10000
-                    connection.readTimeout = 10000
+            try {
+                val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+                
+                val url = URL("https://liveo-backend.onrender.com/activate")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.doOutput = true
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                
+                val jsonInput = JSONObject().apply {
+                    put("code", code.uppercase())
+                    put("device_id", deviceId)
+                }
+                
+                val writer = OutputStreamWriter(connection.outputStream)
+                writer.write(jsonInput.toString())
+                writer.flush()
+                writer.close()
+                
+                val responseCode = connection.responseCode
+                
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val response = connection.inputStream.bufferedReader().readText()
+                    val json = JSONObject(response)
                     
-                    val responseCode = connection.responseCode
+                    val success = json.optBoolean("success", false)
                     
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        val response = connection.inputStream.bufferedReader().readText()
-                        Log.d("ActivationActivity", "Endpoint: $endpoint - Response: $response")
-                        
-                        try {
-                            val json = JSONObject(response)
-                            val isValid = json.optBoolean("valid", false) || 
-                                         json.optBoolean("isValid", false) ||
-                                         json.optBoolean("success", false) ||
-                                         json.optBoolean("active", false)
+                    withContext(Dispatchers.Main) {
+                        if (success) {
+                            val parentalPin = json.optString("parental_pin", "")
+                            val hasAdultAccess = parentalPin.isNotEmpty()
                             
-                            if (isValid) {
-                                adultAccess = json.optBoolean("adult_access", false) ||
-                                            json.optBoolean("adultAccess", false)
-                                success = true
-                                Log.d("ActivationActivity", "SUCCESS! Endpoint: $endpoint")
-                                break
-                            }
-                        } catch (e: Exception) {
-                            Log.e("ActivationActivity", "JSON parse error: ${e.message}")
+                            prefsManager.saveActivation(code, hasAdultAccess)
+                            Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح!", Toast.LENGTH_SHORT).show()
+                            navigateToMain()
+                        } else {
+                            val message = json.optString("message", "كود التفعيل غير صحيح")
+                            Toast.makeText(this@ActivationActivity, message, Toast.LENGTH_LONG).show()
+                            resetButton()
                         }
                     }
-                    
-                    connection.disconnect()
-                    
-                } catch (e: Exception) {
-                    Log.e("ActivationActivity", "Endpoint $endpoint failed: ${e.message}")
-                }
-            }
-            
-            withContext(Dispatchers.Main) {
-                if (success) {
-                    prefsManager.saveActivation(code, adultAccess)
-                    Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح!", Toast.LENGTH_SHORT).show()
-                    navigateToMain()
                 } else {
-                    Toast.makeText(this@ActivationActivity, "كود التفعيل غير صحيح أو خطأ في الاتصال", Toast.LENGTH_LONG).show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@ActivationActivity, "خطأ في الاتصال بالخادم", Toast.LENGTH_SHORT).show()
+                        resetButton()
+                    }
+                }
+                
+                connection.disconnect()
+                
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ActivationActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
                     resetButton()
                 }
             }
@@ -125,8 +121,7 @@ class ActivationActivity : AppCompatActivity() {
     }
     
     private fun navigateToMain() {
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
+        startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
 }
