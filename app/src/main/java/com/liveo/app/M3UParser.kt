@@ -1,52 +1,57 @@
 package com.liveo.app
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.net.URL
 
 class M3UParser(private val url: String) {
     
-    suspend fun parse(): List<Channel> = withContext(Dispatchers.IO) {
+    fun parse(): List<Channel> {
         val channels = mutableListOf<Channel>()
         
         try {
             val content = URL(url).readText()
-            val lines = content.lines()
+            val lines = content.split("\n")
             
-            var i = 0
-            while (i < lines.size) {
-                val line = lines[i].trim()
-                
-                if (line.startsWith("#EXTINF:")) {
-                    val name = extractName(line)
-                    val logo = extractLogo(line)
-                    val category = extractCategory(line)
-                    
-                    if (i + 1 < lines.size) {
-                        val streamUrl = lines[i + 1].trim()
-                        if (streamUrl.isNotEmpty() && !streamUrl.startsWith("#")) {
-                            channels.add(Channel(name, streamUrl, logo, category))
-                        }
+            var currentName = ""
+            var currentLogo = ""
+            var currentCategory = ""
+            var isAdult = false
+            
+            for (line in lines) {
+                when {
+                    line.startsWith("#EXTINF:") -> {
+                        // استخرج المعلومات
+                        currentLogo = extractLogo(line)
+                        currentCategory = extractCategory(line)
+                        currentName = extractName(line)
+                        
+                        // تحقق إذا القناة +18
+                        isAdult = currentCategory.contains("+18", ignoreCase = true) ||
+                                 currentName.contains("+18", ignoreCase = true)
                     }
-                    i += 2
-                } else {
-                    i++
+                    line.startsWith("http") -> {
+                        if (currentName.isNotEmpty()) {
+                            channels.add(
+                                Channel(
+                                    name = currentName,
+                                    url = line.trim(),
+                                    logo = currentLogo,
+                                    category = currentCategory,
+                                    isAdult = isAdult
+                                )
+                            )
+                        }
+                        currentName = ""
+                        currentLogo = ""
+                        currentCategory = ""
+                        isAdult = false
+                    }
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
         
-        channels
-    }
-    
-    private fun extractName(line: String): String {
-        val nameStart = line.lastIndexOf(',')
-        return if (nameStart != -1 && nameStart < line.length - 1) {
-            line.substring(nameStart + 1).trim()
-        } else {
-            "Unknown"
-        }
+        return channels
     }
     
     private fun extractLogo(line: String): String {
@@ -55,7 +60,12 @@ class M3UParser(private val url: String) {
     }
     
     private fun extractCategory(line: String): String {
-        val groupPattern = """group-title="([^"]*)"""".toRegex()
-        return groupPattern.find(line)?.groupValues?.get(1) ?: ""
+        val categoryPattern = """group-title="([^"]*)"""".toRegex()
+        return categoryPattern.find(line)?.groupValues?.get(1) ?: ""
+    }
+    
+    private fun extractName(line: String): String {
+        val parts = line.split(",")
+        return if (parts.size > 1) parts.last().trim() else ""
     }
 }
