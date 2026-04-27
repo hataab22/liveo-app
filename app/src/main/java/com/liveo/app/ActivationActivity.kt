@@ -6,12 +6,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 
 class ActivationActivity : AppCompatActivity() {
     
@@ -25,6 +19,7 @@ class ActivationActivity : AppCompatActivity() {
         
         prefsManager = PreferencesManager(this)
         
+        // تحقق إذا المستخدم مفعّل
         if (prefsManager.isActivated()) {
             navigateToMain()
             return
@@ -35,40 +30,28 @@ class ActivationActivity : AppCompatActivity() {
         
         activateButton.setOnClickListener {
             val code = codeInput.text.toString().trim()
-            if (code.isNotEmpty()) {
-                activateApp(code)
-            } else {
+            
+            if (code.isEmpty()) {
                 Toast.makeText(this, "الرجاء إدخال كود التفعيل", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-        }
-    }
-    
-    private fun activateApp(code: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val retrofit = Retrofit.Builder()
-                    .baseUrl("https://hataab22.github.io/")
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build()
-                
-                val api = retrofit.create(ActivationApi::class.java)
-                val response = api.validateCode(code)
-                
-                withContext(Dispatchers.Main) {
-                    if (response.activationCode.isValid) {
-                        prefsManager.saveActivationCode(code)
-                        prefsManager.setActivated(true)
-                        Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح", Toast.LENGTH_SHORT).show()
-                        navigateToMain()
-                    } else {
-                        Toast.makeText(this@ActivationActivity, "كود التفعيل غير صحيح", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@ActivationActivity, "خطأ في الاتصال بالخادم", Toast.LENGTH_SHORT).show()
-                }
+            
+            // قائمة الأكواد الصحيحة
+            val validCodes = listOf(
+                "123456",
+                "LIVEO2024",
+                "IPTV2024",
+                "TEST123"
+            )
+            
+            if (validCodes.contains(code.uppercase())) {
+                // الكود صحيح
+                prefsManager.saveActivation(code)
+                Toast.makeText(this, "تم التفعيل بنجاح!", Toast.LENGTH_SHORT).show()
+                navigateToMain()
+            } else {
+                // الكود خاطئ
+                Toast.makeText(this, "كود التفعيل غير صحيح", Toast.LENGTH_SHORT).show()
             }
         }
     }
