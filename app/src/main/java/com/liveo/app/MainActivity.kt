@@ -40,13 +40,12 @@ class MainActivity : AppCompatActivity() {
                 allChannels = parser.parse()
                 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "تم تحميل ${allChannels.size} قناة", Toast.LENGTH_SHORT).show()
                     setupViewPager()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, "خطأ في تحميل القنوات", Toast.LENGTH_SHORT).show()
                     setupViewPager()
                 }
             }
@@ -146,4 +145,3 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
-	
