@@ -18,45 +18,40 @@ import java.net.URL
 
 class ActivationActivity : AppCompatActivity() {
     
+    private lateinit var codeInput: EditText
+    private lateinit var activateButton: Button
     private lateinit var prefsManager: PreferencesManager
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_activation)
         
-        try {
-            setContentView(R.layout.activity_activation)
+        prefsManager = PreferencesManager(this)
+        
+        if (prefsManager.isActivated()) {
+            navigateToMain()
+            return
+        }
+        
+        codeInput = findViewById(R.id.codeInput)
+        activateButton = findViewById(R.id.activateButton)
+        
+        activateButton.setOnClickListener {
+            val code = codeInput.text.toString().trim()
             
-            prefsManager = PreferencesManager(this)
-            
-            if (prefsManager.isActivated()) {
-                navigateToMain()
-                return
+            if (code.isEmpty()) {
+                Toast.makeText(this, "الرجاء إدخال كود التفعيل", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
             
-            val codeInput = findViewById<EditText>(R.id.codeInput)
-            val activateButton = findViewById<Button>(R.id.activateButton)
+            activateButton.isEnabled = false
+            activateButton.text = "جاري التحقق..."
             
-            activateButton.setOnClickListener {
-                val code = codeInput.text.toString().trim()
-                
-                if (code.isEmpty()) {
-                    Toast.makeText(this, "الرجاء إدخال كود التفعيل", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                
-                activateButton.isEnabled = false
-                activateButton.text = "جاري التحقق..."
-                
-                validateCode(code, activateButton)
-            }
-            
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(this, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
+            validateCode(code)
         }
     }
     
-    private fun validateCode(code: String, button: Button) {
+    private fun validateCode(code: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
@@ -98,15 +93,13 @@ class ActivationActivity : AppCompatActivity() {
                         } else {
                             val message = json.optString("message", "كود التفعيل غير صحيح")
                             Toast.makeText(this@ActivationActivity, message, Toast.LENGTH_LONG).show()
-                            button.isEnabled = true
-                            button.text = "تفعيل"
+                            resetButton()
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@ActivationActivity, "خطأ في الاتصال بالخادم", Toast.LENGTH_SHORT).show()
-                        button.isEnabled = true
-                        button.text = "تفعيل"
+                        resetButton()
                     }
                 }
                 
@@ -116,20 +109,19 @@ class ActivationActivity : AppCompatActivity() {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@ActivationActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
-                    button.isEnabled = true
-                    button.text = "تفعيل"
+                    resetButton()
                 }
             }
         }
     }
     
+    private fun resetButton() {
+        activateButton.isEnabled = true
+        activateButton.text = "تفعيل"
+    }
+    
     private fun navigateToMain() {
-        try {
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(this, "خطأ في الانتقال: ${e.message}", Toast.LENGTH_LONG).show()
-        }
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
     }
 }
