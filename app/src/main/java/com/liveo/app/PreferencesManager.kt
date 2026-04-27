@@ -38,10 +38,7 @@ class PreferencesManager(context: Context) {
     fun getParentalPin(): String? = prefs.getString(KEY_PARENTAL_PIN, null)
     
     fun clearActivation() {
-        prefs.edit().apply {
-            clear()
-            apply()
-        }
+        prefs.edit().clear().apply()
     }
     
     fun setParentalUnlocked(unlocked: Boolean) {
@@ -49,3 +46,58 @@ class PreferencesManager(context: Context) {
     }
     
     fun isParentalUnlocked(): Boolean = prefs.getBoolean(KEY_PARENTAL_UNLOCKED, false)
+    
+    fun addToFavorites(channel: Channel) {
+        val favorites = getFavorites().toMutableList()
+        if (!favorites.any { it.id == channel.id }) {
+            favorites.add(channel)
+            saveFavorites(favorites)
+        }
+    }
+    
+    fun removeFromFavorites(channel: Channel) {
+        val favorites = getFavorites().toMutableList()
+        favorites.removeAll { it.id == channel.id }
+        saveFavorites(favorites)
+    }
+    
+    fun isFavorite(channel: Channel): Boolean = getFavorites().any { it.id == channel.id }
+    
+    fun getFavorites(): List<Channel> {
+        val json = prefs.getString(KEY_FAVORITES, null) ?: return emptyList()
+        val type = object : TypeToken<List<Channel>>() {}.type
+        return try {
+            gson.fromJson(json, type)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    private fun saveFavorites(favorites: List<Channel>) {
+        prefs.edit().putString(KEY_FAVORITES, gson.toJson(favorites)).apply()
+    }
+    
+    fun addToRecent(channel: Channel) {
+        val recent = getRecent().toMutableList()
+        recent.removeAll { it.id == channel.id }
+        recent.add(0, channel)
+        if (recent.size > 20) {
+            recent.removeAt(recent.size - 1)
+        }
+        saveRecent(recent)
+    }
+    
+    fun getRecent(): List<Channel> {
+        val json = prefs.getString(KEY_RECENT, null) ?: return emptyList()
+        val type = object : TypeToken<List<Channel>>() {}.type
+        return try {
+            gson.fromJson(json, type)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    private fun saveRecent(recent: List<Channel>) {
+        prefs.edit().putString(KEY_RECENT, gson.toJson(recent)).apply()
+    }
+}
