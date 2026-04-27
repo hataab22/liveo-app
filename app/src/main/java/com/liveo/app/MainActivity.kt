@@ -10,38 +10,57 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     
-    private lateinit var tabLayout: TabLayout
-    private lateinit var viewPager: ViewPager
     private lateinit var prefsManager: PreferencesManager
-    private var allChannels = listOf<Channel>()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
         
-        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        
-        prefsManager = PreferencesManager(this)
-        tabLayout = findViewById(R.id.tabLayout)
-        viewPager = findViewById(R.id.viewPager)
-        
-        loadChannels()
+        try {
+            setContentView(R.layout.activity_main)
+            
+            prefsManager = PreferencesManager(this)
+            
+            // Setup toolbar
+            try {
+                val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+                setSupportActionBar(toolbar)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            
+            // Setup basic UI
+            val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+            val viewPager = findViewById<ViewPager>(R.id.viewPager)
+            
+            // Simple adapter with empty channels for now
+            val adapter = ViewPagerAdapter(supportFragmentManager, emptyList(), prefsManager)
+            viewPager.adapter = adapter
+            tabLayout.setupWithViewPager(viewPager)
+            
+            Toast.makeText(this, "مرحباً في Liveo!", Toast.LENGTH_SHORT).show()
+            
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
     
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        menu.findItem(R.id.action_parental_lock)?.title = if (prefsManager.isParentalUnlocked()) {
-            "تفعيل الرقابة الأبوية"
-        } else {
-            "تعطيل الرقابة الأبوية"
+        try {
+            menuInflater.inflate(R.menu.menu_main, menu)
+            val lockItem = menu.findItem(R.id.action_parental_lock)
+            if (lockItem != null) {
+                lockItem.title = if (prefsManager.isParentalUnlocked()) {
+                    "تفعيل الرقابة الأبوية"
+                } else {
+                    "تعطيل الرقابة الأبوية"
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         return true
     }
@@ -65,7 +84,6 @@ class MainActivity : AppCompatActivity() {
             prefsManager.setParentalUnlocked(false)
             Toast.makeText(this, "تم تفعيل الرقابة الأبوية", Toast.LENGTH_SHORT).show()
             invalidateOptionsMenu()
-            recreate()
         } else {
             showPinDialog()
         }
@@ -86,7 +104,6 @@ class MainActivity : AppCompatActivity() {
                     prefsManager.setParentalUnlocked(true)
                     Toast.makeText(this, "تم تعطيل الرقابة الأبوية", Toast.LENGTH_SHORT).show()
                     invalidateOptionsMenu()
-                    recreate()
                 } else {
                     Toast.makeText(this, "رمز PIN خاطئ", Toast.LENGTH_SHORT).show()
                 }
@@ -108,25 +125,5 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("لا", null)
             .show()
-    }
-    
-    private fun loadChannels() {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val parser = M3UParser("https://drive.google.com/uc?export=download&id=1EED9-uQPohWSo2mPYtT9Ji9hr7wBzg4A")
-                allChannels = parser.parse()
-                withContext(Dispatchers.Main) { setupViewPager() }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_SHORT).show()
-                    setupViewPager()
-                }
-            }
-        }
-    }
-    
-    private fun setupViewPager() {
-        viewPager.adapter = ViewPagerAdapter(supportFragmentManager, allChannels, prefsManager)
-        tabLayout.setupWithViewPager(viewPager)
     }
 }
