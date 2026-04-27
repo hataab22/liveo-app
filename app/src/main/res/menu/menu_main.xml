@@ -4,7 +4,7 @@
     
     <item
         android:id="@+id/action_parental_lock"
-        android:title="القفل الأبوي"
+        android:title="الرقابة الأبوية"
         app:showAsAction="never" />
     
     <item
