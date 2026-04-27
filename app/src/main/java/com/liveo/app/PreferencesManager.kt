@@ -7,14 +7,25 @@ import com.google.gson.reflect.TypeToken
 
 class PreferencesManager(context: Context) {
     
-    private val prefs: SharedPreferences = context.getSharedPreferences("liveo_prefs", Context.MODE_PRIVATE)
+    private val sharedPreferences: SharedPreferences = 
+        context.getSharedPreferences("liveo_prefs", Context.MODE_PRIVATE)
+    
     private val gson = Gson()
     
-    // القنوات المفضلة
-    fun getFavorites(): List<Channel> {
-        val json = prefs.getString("favorites", null) ?: return emptyList()
-        val type = object : TypeToken<List<Channel>>() {}.type
-        return gson.fromJson(json, type)
+    fun saveActivationCode(code: String) {
+        sharedPreferences.edit().putString("activation_code", code).apply()
+    }
+    
+    fun getActivationCode(): String? {
+        return sharedPreferences.getString("activation_code", null)
+    }
+    
+    fun isActivated(): Boolean {
+        return sharedPreferences.getBoolean("activated", false)
+    }
+    
+    fun setActivated(activated: Boolean) {
+        sharedPreferences.edit().putBoolean("activated", activated).apply()
     }
     
     fun addToFavorites(channel: Channel) {
@@ -31,86 +42,54 @@ class PreferencesManager(context: Context) {
         saveFavorites(favorites)
     }
     
-    private fun saveFavorites(favorites: List<Channel>) {
-        val json = gson.toJson(favorites)
-        prefs.edit().putString("favorites", json).apply()
-    }
-    
     fun isFavorite(channel: Channel): Boolean {
         return getFavorites().any { it.id == channel.id }
     }
     
-    // القنوات الأخيرة
-    fun getRecent(): List<Channel> {
-        val json = prefs.getString("recent", null) ?: return emptyList()
+    fun getFavorites(): List<Channel> {
+        val json = sharedPreferences.getString("favorites", null) ?: return emptyList()
         val type = object : TypeToken<List<Channel>>() {}.type
         return gson.fromJson(json, type)
+    }
+    
+    private fun saveFavorites(favorites: List<Channel>) {
+        val json = gson.toJson(favorites)
+        sharedPreferences.edit().putString("favorites", json).apply()
     }
     
     fun addToRecent(channel: Channel) {
         val recent = getRecent().toMutableList()
         recent.removeAll { it.id == channel.id }
         recent.add(0, channel)
-        if (recent.size > 20) {
+        if (recent.size > 50) {
             recent.removeAt(recent.size - 1)
         }
         saveRecent(recent)
     }
     
+    fun getRecent(): List<Channel> {
+        val json = sharedPreferences.getString("recent", null) ?: return emptyList()
+        val type = object : TypeToken<List<Channel>>() {}.type
+        return gson.fromJson(json, type)
+    }
+    
     private fun saveRecent(recent: List<Channel>) {
         val json = gson.toJson(recent)
-        prefs.edit().putString("recent", json).apply()
+        sharedPreferences.edit().putString("recent", json).apply()
     }
     
-    // كود التفعيل
-    fun saveActivationCode(code: ActivationCode) {
-        val json = gson.toJson(code)
-        prefs.edit().putString("activation_code", json).apply()
-    }
-    
-    fun getActivationCode(): ActivationCode? {
-        val json = prefs.getString("activation_code", null)
-        return if (json != null) {
-            gson.fromJson(json, ActivationCode::class.java)
-        } else null
-    }
-    
-    fun clearActivationCode() {
-        prefs.edit().remove("activation_code").apply()
-    }
-    
-    fun isCodeValid(): Boolean {
-        val code = getActivationCode()
-        return code != null && 
-               code.isActive && 
-               code.expiryDate > System.currentTimeMillis()
-    }
-    
-    // دوال الحماية
     fun isParentalUnlocked(): Boolean {
-        return prefs.getBoolean("parental_unlocked", false)
+        return sharedPreferences.getBoolean("parental_unlocked", false)
     }
     
     fun setParentalUnlocked(unlocked: Boolean) {
-        prefs.edit().putBoolean("parental_unlocked", unlocked).apply()
+        sharedPreferences.edit().putBoolean("parental_unlocked", unlocked).apply()
     }
     
-    fun resetParentalLock() {
-        setParentalUnlocked(false)
-    }
-    
-    fun hasParentalPin(): Boolean {
-        return getActivationCode()?.parentalPin?.isNotEmpty() == true
-    }
-    
-    fun getParentalPin(): String? {
-        return getActivationCode()?.parentalPin
-    }
-}
-fun clearActivation() {
-    sharedPreferences.edit().apply {
-        remove("activation_code")
-        remove("activated")
-        apply()
+    fun clearActivation() {
+        sharedPreferences.edit()
+            .remove("activation_code")
+            .remove("activated")
+            .apply()
     }
 }
