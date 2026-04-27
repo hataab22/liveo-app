@@ -19,12 +19,10 @@ class M3UParser(private val url: String) {
             for (line in lines) {
                 when {
                     line.startsWith("#EXTINF:") -> {
-                        // استخرج المعلومات
                         currentLogo = extractLogo(line)
                         currentCategory = extractCategory(line)
                         currentName = extractName(line)
                         
-                        // تحقق إذا القناة +18
                         isAdult = currentCategory.contains("+18", ignoreCase = true) ||
                                  currentName.contains("+18", ignoreCase = true)
                     }
