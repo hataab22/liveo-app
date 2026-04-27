@@ -9,10 +9,10 @@ data class Channel(
     val name: String,
     val url: String,
     val logo: String = "",
-    val category: String = "",
-    val isAdult: Boolean = false
+    val category: String = ""
 )
 
+// Activation models
 data class ActivationCode(
     val code: String,
     val isValid: Boolean
@@ -23,6 +23,7 @@ data class ActivationResponse(
     val activationCode: ActivationCode
 )
 
+// PIN Verification
 data class PinVerificationResponse(
     val success: Boolean = false,
     val valid: Boolean = false,
@@ -30,8 +31,8 @@ data class PinVerificationResponse(
     val isValid: Boolean = false
 )
 
+// Activation API Interface
 interface ActivationApi {
     @GET("liveo-codes.json")
     suspend fun validateCode(@Query("code") code: String): ActivationResponse
 }
-	
