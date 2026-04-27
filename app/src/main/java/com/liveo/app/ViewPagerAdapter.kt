@@ -13,7 +13,6 @@ class ViewPagerAdapter(
     private val categories = listOf("الكل", "قنوات مباشرة", "أفلام", "مسلسلات", "موسيقى", "المفضلة", "الأخيرة")
     
     override fun getItem(position: Int): Fragment {
-        // فلتر القنوات حسب الرقابة الأبوية
         val filteredChannels = if (prefsManager.isParentalUnlocked() || !prefsManager.hasAdultAccess()) {
             allChannels
         } else {
@@ -21,14 +20,14 @@ class ViewPagerAdapter(
         }
         
         return when (position) {
-            0 -> AllChannelsFragment.newInstance(filteredChannels)
-            1 -> CategoryWithSubsFragment.newInstance(filteredChannels, "قنوات")
-            2 -> CategoryWithSubsFragment.newInstance(filteredChannels, "أفلام")
-            3 -> CategoryWithSubsFragment.newInstance(filteredChannels, "مسلسلات")
-            4 -> CategoryWithSubsFragment.newInstance(filteredChannels, "موسيقى")
-            5 -> FavoritesFragment.newInstance()
-            6 -> RecentFragment.newInstance()
-            else -> AllChannelsFragment.newInstance(filteredChannels)
+            0 -> AllChannelsFragment.newInstance(filteredChannels, prefsManager)
+            1 -> CategoryWithSubsFragment.newInstance(filteredChannels, prefsManager, "قنوات")
+            2 -> CategoryWithSubsFragment.newInstance(filteredChannels, prefsManager, "أفلام")
+            3 -> CategoryWithSubsFragment.newInstance(filteredChannels, prefsManager, "مسلسلات")
+            4 -> CategoryWithSubsFragment.newInstance(filteredChannels, prefsManager, "موسيقى")
+            5 -> FavoritesFragment.newInstance(prefsManager)
+            6 -> RecentFragment.newInstance(prefsManager)
+            else -> AllChannelsFragment.newInstance(filteredChannels, prefsManager)
         }
     }
     
