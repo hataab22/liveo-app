@@ -53,7 +53,7 @@ class ActivationActivity : AppCompatActivity() {
                             customerName = response.customer_name ?: "",
                             parentalPin = response.parental_pin
                         )
-                        prefsManager.saveActivationCode(activationCode)
+                        prefsManager.saveActivationCode(response.activationCode.code)
                         
                         Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح ✓", Toast.LENGTH_SHORT).show()
                         
