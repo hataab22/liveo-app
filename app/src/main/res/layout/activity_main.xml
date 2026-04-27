@@ -4,69 +4,31 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="#121212">
 
-    <!-- Header -->
-    <LinearLayout
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@color/liveo_dark"
-        android:padding="16dp"
-        android:elevation="4dp">
+        android:layout_height="?attr/actionBarSize"
+        android:background="#1E1E1E"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+        app:title="Liveo IPTV"
+        app:titleTextColor="#FFFFFF" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Liveo"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="@color/liveo_purple" />
-
-            <TextView
-                android:id="@+id/expiryText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="متبقي: 30 يوم"
-                android:textSize="12sp"
-                android:textColor="@color/success"
-                android:background="@color/liveo_gray"
-                android:padding="6dp"
-                android:layout_marginStart="8dp" />
-        </LinearLayout>
-
-        <SearchView
-            android:id="@+id/searchView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/input_background"
-            android:queryHint="ابحث عن قناة..."
-            android:iconifiedByDefault="false" />
-    </LinearLayout>
-
-    <!-- Tabs -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/liveo_dark"
-        app:tabTextColor="@color/light_gray"
-        app:tabSelectedTextColor="@color/white"
-        app:tabIndicatorColor="@color/liveo_cyan"
-        app:tabIndicatorHeight="3dp" />
+        android:background="#1E1E1E"
+        app:tabMode="scrollable"
+        app:tabTextColor="#AAAAAA"
+        app:tabSelectedTextColor="#9C27B0"
+        app:tabIndicatorColor="#9C27B0" />
 
-    <!-- ViewPager (تم التغيير من ViewPager2 إلى ViewPager) -->
     <androidx.viewpager.widget.ViewPager
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 </LinearLayout>
