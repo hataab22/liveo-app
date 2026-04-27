@@ -59,3 +59,9 @@ data class PinVerificationResponse(
     val valid: Boolean = false,
     val message: String? = null
 )
+
+// Activation API Interface
+interface ActivationApi {
+    @GET("liveo-codes.json")
+    suspend fun validateCode(@Query("code") code: String): ActivationResponse
+}
