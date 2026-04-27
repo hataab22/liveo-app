@@ -26,7 +26,6 @@ class MainActivity : AppCompatActivity() {
         
         prefsManager = PreferencesManager(this)
         
-        // Setup toolbar
         val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         
@@ -41,15 +40,13 @@ class MainActivity : AppCompatActivity() {
                 allChannels = parser.parse()
                 
                 withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "تم تحميل ${allChannels.size} قناة", Toast.LENGTH_SHORT).show()
                     setupViewPager()
-                    if (allChannels.isEmpty()) {
-                        Toast.makeText(this@MainActivity, "لا توجد قنوات", Toast.LENGTH_SHORT).show()
-                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "خطأ في تحميل القنوات", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
                     setupViewPager()
                 }
             }
@@ -104,6 +101,14 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun showPinDialog() {
+        // استخدم PIN من PreferencesManager
+        val savedPin = prefsManager.getParentalPin()
+        
+        if (savedPin.isNullOrEmpty()) {
+            Toast.makeText(this, "الحساب غير مصرح له بالمحتوى الكبار", Toast.LENGTH_LONG).show()
+            return
+        }
+        
         val input = EditText(this).apply {
             hint = "أدخل رمز PIN"
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
@@ -111,10 +116,10 @@ class MainActivity : AppCompatActivity() {
         
         AlertDialog.Builder(this)
             .setTitle("الرقابة الأبوية")
-            .setMessage("أدخل رمز PIN (1234)")
+            .setMessage("أدخل رمز PIN للمحتوى الكبار")
             .setView(input)
             .setPositiveButton("تأكيد") { _, _ ->
-                if (input.text.toString() == "1234") {
+                if (input.text.toString() == savedPin) {
                     prefsManager.setParentalUnlocked(true)
                     Toast.makeText(this, "تم تعطيل الرقابة الأبوية", Toast.LENGTH_SHORT).show()
                     invalidateOptionsMenu()
