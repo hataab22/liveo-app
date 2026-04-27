@@ -35,3 +35,4 @@ class ViewPagerAdapter(
     
     override fun getPageTitle(position: Int): CharSequence = categories[position]
 }
+	
