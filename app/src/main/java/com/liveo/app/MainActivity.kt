@@ -37,7 +37,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
         
-        // Update parental lock menu item title
         val lockItem = menu.findItem(R.id.action_parental_lock)
         lockItem.title = if (prefsManager.isParentalUnlocked()) {
             "تفعيل القفل الأبوي"
@@ -64,13 +63,11 @@ class MainActivity : AppCompatActivity() {
     
     private fun toggleParentalLock() {
         if (prefsManager.isParentalUnlocked()) {
-            // Lock it
             prefsManager.setParentalUnlocked(false)
             Toast.makeText(this, "تم تفعيل القفل الأبوي", Toast.LENGTH_SHORT).show()
-            invalidateOptionsMenu() // Refresh menu
-            recreate() // Reload fragments
+            invalidateOptionsMenu()
+            recreate()
         } else {
-            // Ask for PIN to unlock
             showPinDialog()
         }
     }
