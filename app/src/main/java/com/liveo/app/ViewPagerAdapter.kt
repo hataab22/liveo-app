@@ -10,29 +10,57 @@ class ViewPagerAdapter(
     private val prefsManager: PreferencesManager
 ) : FragmentPagerAdapter(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
     
-    private val categories = listOf("الكل", "قنوات مباشرة", "أفلام", "مسلسلات", "موسيقى", "المفضلة", "الأخيرة")
+    private val tabs = listOf(
+        "الكل",
+        "بث مباشر",
+        "أفلام",
+        "مسلسلات",
+        "موسيقى",
+        "المفضلة",
+        "الأخيرة"
+    )
     
     override fun getItem(position: Int): Fragment {
-        val filteredChannels = if (prefsManager.isParentalUnlocked() || !prefsManager.hasAdultAccess()) {
-            allChannels
-        } else {
-            allChannels.filter { !it.isAdult }
-        }
-        
         return when (position) {
-            0 -> AllChannelsFragment.newInstance(filteredChannels, prefsManager)
-            1 -> CategoryWithSubsFragment.newInstance(filteredChannels, prefsManager, "قنوات")
-            2 -> CategoryWithSubsFragment.newInstance(filteredChannels, prefsManager, "أفلام")
-            3 -> CategoryWithSubsFragment.newInstance(filteredChannels, prefsManager, "مسلسلات")
-            4 -> CategoryWithSubsFragment.newInstance(filteredChannels, prefsManager, "موسيقى")
+            0 -> AllChannelsFragment.newInstance(allChannels, prefsManager)
+            1 -> {
+                val filtered = allChannels.filter { !isMovie(it) && !isSeries(it) && !isMusic(it) }
+                CategoryWithSubsFragment.newInstance(filtered, prefsManager, "بث مباشر")
+            }
+            2 -> {
+                val filtered = allChannels.filter { isMovie(it) }
+                CategoryWithSubsFragment.newInstance(filtered, prefsManager, "أفلام")
+            }
+            3 -> {
+                val filtered = allChannels.filter { isSeries(it) }
+                CategoryWithSubsFragment.newInstance(filtered, prefsManager, "مسلسلات")
+            }
+            4 -> {
+                val filtered = allChannels.filter { isMusic(it) }
+                CategoryWithSubsFragment.newInstance(filtered, prefsManager, "موسيقى")
+            }
             5 -> FavoritesFragment.newInstance(prefsManager)
             6 -> RecentFragment.newInstance(prefsManager)
-            else -> AllChannelsFragment.newInstance(filteredChannels, prefsManager)
+            else -> AllChannelsFragment.newInstance(allChannels, prefsManager)
         }
     }
     
-    override fun getCount(): Int = categories.size
+    override fun getCount(): Int = tabs.size
     
-    override fun getPageTitle(position: Int): CharSequence = categories[position]
+    override fun getPageTitle(position: Int): CharSequence = tabs[position]
+    
+    private fun isMovie(channel: Channel): Boolean {
+        val cat = channel.category.lowercase()
+        return cat.contains("أفلام") || cat.contains("movies") || cat.contains("cinema") || cat.contains("film")
+    }
+    
+    private fun isSeries(channel: Channel): Boolean {
+        val cat = channel.category.lowercase()
+        return cat.contains("مسلسل") || cat.contains("series") || cat.contains("show")
+    }
+    
+    private fun isMusic(channel: Channel): Boolean {
+        val cat = channel.category.lowercase()
+        return cat.contains("موسيقى") || cat.contains("music") || cat.contains("أغاني")
+    }
 }
-	
