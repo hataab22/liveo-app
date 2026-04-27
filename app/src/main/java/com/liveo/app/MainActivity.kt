@@ -26,6 +26,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
+        setSupportActionBar(findViewById(R.id.toolbar))
+        
         prefsManager = PreferencesManager(this)
         
         tabLayout = findViewById(R.id.tabLayout)
