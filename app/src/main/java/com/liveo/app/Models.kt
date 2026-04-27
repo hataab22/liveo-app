@@ -34,3 +34,4 @@ interface ActivationApi {
     @GET("liveo-codes.json")
     suspend fun validateCode(@Query("code") code: String): ActivationResponse
 }
+	
