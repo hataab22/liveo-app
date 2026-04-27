@@ -10,58 +10,71 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     
     private lateinit var prefsManager: PreferencesManager
+    private var allChannels = listOf<Channel>()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
         
-        try {
-            setContentView(R.layout.activity_main)
-            
-            prefsManager = PreferencesManager(this)
-            
-            // Setup toolbar
+        prefsManager = PreferencesManager(this)
+        
+        // Setup toolbar
+        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        
+        loadChannels()
+    }
+    
+    private fun loadChannels() {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
-                setSupportActionBar(toolbar)
+                val url = "https://drive.google.com/uc?export=download&id=1EED9-uQPohWSo2mPYtT9Ji9hr7wBzg4A"
+                val parser = M3UParser(url)
+                allChannels = parser.parse()
+                
+                withContext(Dispatchers.Main) {
+                    setupViewPager()
+                    if (allChannels.isEmpty()) {
+                        Toast.makeText(this@MainActivity, "لا توجد قنوات", Toast.LENGTH_SHORT).show()
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "خطأ في تحميل القنوات", Toast.LENGTH_SHORT).show()
+                    setupViewPager()
+                }
             }
-            
-            // Setup basic UI
-            val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
-            val viewPager = findViewById<ViewPager>(R.id.viewPager)
-            
-            // Simple adapter with empty channels for now
-            val adapter = ViewPagerAdapter(supportFragmentManager, emptyList(), prefsManager)
-            viewPager.adapter = adapter
-            tabLayout.setupWithViewPager(viewPager)
-            
-            Toast.makeText(this, "مرحباً في Liveo!", Toast.LENGTH_SHORT).show()
-            
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(this, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
     
+    private fun setupViewPager() {
+        val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+        val viewPager = findViewById<ViewPager>(R.id.viewPager)
+        
+        val adapter = ViewPagerAdapter(supportFragmentManager, allChannels, prefsManager)
+        viewPager.adapter = adapter
+        tabLayout.setupWithViewPager(viewPager)
+    }
+    
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        try {
-            menuInflater.inflate(R.menu.menu_main, menu)
-            val lockItem = menu.findItem(R.id.action_parental_lock)
-            if (lockItem != null) {
-                lockItem.title = if (prefsManager.isParentalUnlocked()) {
-                    "تفعيل الرقابة الأبوية"
-                } else {
-                    "تعطيل الرقابة الأبوية"
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        menuInflater.inflate(R.menu.menu_main, menu)
+        
+        val lockItem = menu.findItem(R.id.action_parental_lock)
+        lockItem?.title = if (prefsManager.isParentalUnlocked()) {
+            "تفعيل الرقابة الأبوية"
+        } else {
+            "تعطيل الرقابة الأبوية"
         }
+        
         return true
     }
     
@@ -84,6 +97,7 @@ class MainActivity : AppCompatActivity() {
             prefsManager.setParentalUnlocked(false)
             Toast.makeText(this, "تم تفعيل الرقابة الأبوية", Toast.LENGTH_SHORT).show()
             invalidateOptionsMenu()
+            recreate()
         } else {
             showPinDialog()
         }
@@ -104,6 +118,7 @@ class MainActivity : AppCompatActivity() {
                     prefsManager.setParentalUnlocked(true)
                     Toast.makeText(this, "تم تعطيل الرقابة الأبوية", Toast.LENGTH_SHORT).show()
                     invalidateOptionsMenu()
+                    recreate()
                 } else {
                     Toast.makeText(this, "رمز PIN خاطئ", Toast.LENGTH_SHORT).show()
                 }
