@@ -125,3 +125,4 @@ class ActivationActivity : AppCompatActivity() {
         finish()
     }
 }
+	
