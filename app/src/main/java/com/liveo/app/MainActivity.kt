@@ -101,7 +101,6 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun showPinDialog() {
-        // استخدم PIN من PreferencesManager
         val savedPin = prefsManager.getParentalPin()
         
         if (savedPin.isNullOrEmpty()) {
