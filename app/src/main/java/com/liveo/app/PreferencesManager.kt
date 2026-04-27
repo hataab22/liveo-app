@@ -16,15 +16,17 @@ class PreferencesManager(context: Context) {
         private const val KEY_ACTIVATION_CODE = "activation_code"
         private const val KEY_PARENTAL_UNLOCKED = "parental_unlocked"
         private const val KEY_ADULT_ACCESS = "adult_access"
+        private const val KEY_PARENTAL_PIN = "parental_pin"
         private const val KEY_FAVORITES = "favorites"
         private const val KEY_RECENT = "recent"
     }
     
-    fun saveActivation(code: String, adultAccess: Boolean = false) {
+    fun saveActivation(code: String, adultAccess: Boolean = false, parentalPin: String = "") {
         prefs.edit().apply {
             putBoolean(KEY_ACTIVATED, true)
             putString(KEY_ACTIVATION_CODE, code)
             putBoolean(KEY_ADULT_ACCESS, adultAccess)
+            putString(KEY_PARENTAL_PIN, parentalPin)
             apply()
         }
     }
@@ -32,6 +34,8 @@ class PreferencesManager(context: Context) {
     fun isActivated(): Boolean = prefs.getBoolean(KEY_ACTIVATED, false)
     
     fun hasAdultAccess(): Boolean = prefs.getBoolean(KEY_ADULT_ACCESS, false)
+    
+    fun getParentalPin(): String? = prefs.getString(KEY_PARENTAL_PIN, null)
     
     fun clearActivation() {
         prefs.edit().apply {
@@ -45,48 +49,3 @@ class PreferencesManager(context: Context) {
     }
     
     fun isParentalUnlocked(): Boolean = prefs.getBoolean(KEY_PARENTAL_UNLOCKED, false)
-    
-    fun addToFavorites(channel: Channel) {
-        val favorites = getFavorites().toMutableList()
-        if (!favorites.any { it.id == channel.id }) {
-            favorites.add(channel)
-            saveFavorites(favorites)
-        }
-    }
-    
-    fun removeFromFavorites(channel: Channel) {
-        val favorites = getFavorites().toMutableList()
-        favorites.removeAll { it.id == channel.id }
-        saveFavorites(favorites)
-    }
-    
-    fun isFavorite(channel: Channel): Boolean = getFavorites().any { it.id == channel.id }
-    
-    fun getFavorites(): List<Channel> {
-        val json = prefs.getString(KEY_FAVORITES, null) ?: return emptyList()
-        val type = object : TypeToken<List<Channel>>() {}.type
-        return try { gson.fromJson(json, type) } catch (e: Exception) { emptyList() }
-    }
-    
-    private fun saveFavorites(favorites: List<Channel>) {
-        prefs.edit().putString(KEY_FAVORITES, gson.toJson(favorites)).apply()
-    }
-    
-    fun addToRecent(channel: Channel) {
-        val recent = getRecent().toMutableList()
-        recent.removeAll { it.id == channel.id }
-        recent.add(0, channel)
-        if (recent.size > 20) recent.removeAt(recent.size - 1)
-        saveRecent(recent)
-    }
-    
-    fun getRecent(): List<Channel> {
-        val json = prefs.getString(KEY_RECENT, null) ?: return emptyList()
-        val type = object : TypeToken<List<Channel>>() {}.type
-        return try { gson.fromJson(json, type) } catch (e: Exception) { emptyList() }
-    }
-    
-    private fun saveRecent(recent: List<Channel>) {
-        prefs.edit().putString(KEY_RECENT, gson.toJson(recent)).apply()
-    }
-}
