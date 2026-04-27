@@ -9,6 +9,9 @@ import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class ActivationActivity : AppCompatActivity() {
     
@@ -21,59 +24,58 @@ class ActivationActivity : AppCompatActivity() {
         setContentView(R.layout.activity_activation)
         
         prefsManager = PreferencesManager(this)
+        
+        if (prefsManager.isActivated()) {
+            navigateToMain()
+            return
+        }
+        
         codeInput = findViewById(R.id.codeInput)
         activateButton = findViewById(R.id.activateButton)
         
         activateButton.setOnClickListener {
             val code = codeInput.text.toString().trim()
             if (code.isNotEmpty()) {
-                activateCode(code)
+                activateApp(code)
             } else {
-                Toast.makeText(this, "أدخل الكود", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "الرجاء إدخال كود التفعيل", Toast.LENGTH_SHORT).show()
             }
         }
     }
     
-    private fun activateCode(code: String) {
-        activateButton.isEnabled = false
-        activateButton.text = "جاري التفعيل..."
-        
-        val deviceId = android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID)
-        
+    private fun activateApp(code: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val response = ApiClient.activateCode(code, deviceId)
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("https://hataab22.github.io/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
                 
-                CoroutineScope(Dispatchers.Main).launch {
-                    if (response.success) {
-                        val activationCode = ActivationCode(
-                            code = response.code ?: code,
-                            expiryDate = response.expires_at ?: 0,
-                            isActive = true,
-                            customerName = response.customer_name ?: "",
-                            parentalPin = response.parental_pin
-                        )
-                        prefsManager.saveActivationCode(response.activationCode.code)
-                        
-                        Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح ✓", Toast.LENGTH_SHORT).show()
-                        
-                        val intent = Intent(this@ActivationActivity, MainActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        startActivity(intent)
-                        finish()
+                val api = retrofit.create(ActivationApi::class.java)
+                val response = api.validateCode(code)
+                
+                withContext(Dispatchers.Main) {
+                    if (response.isValid) {
+                        prefsManager.saveActivationCode(code)
+                        prefsManager.setActivated(true)
+                        Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح", Toast.LENGTH_SHORT).show()
+                        navigateToMain()
                     } else {
-                        activateButton.isEnabled = true
-                        activateButton.text = "تفعيل"
-                        Toast.makeText(this@ActivationActivity, response.message ?: "فشل التفعيل", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@ActivationActivity, "كود التفعيل غير صحيح", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
-                CoroutineScope(Dispatchers.Main).launch {
-                    activateButton.isEnabled = true
-                    activateButton.text = "تفعيل"
-                    Toast.makeText(this@ActivationActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ActivationActivity, "خطأ في الاتصال بالخادم", Toast.LENGTH_SHORT).show()
                 }
             }
         }
+    }
+    
+    private fun navigateToMain() {
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 }
