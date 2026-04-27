@@ -18,16 +18,18 @@ class PreferencesManager(context: Context) {
         private const val KEY_ADULT_ACCESS = "adult_access"
         private const val KEY_FAVORITES = "favorites"
         private const val KEY_RECENT = "recent"
+				private const val KEY_PARENTAL_PIN = "parental_pin"
     }
     
-    fun saveActivation(code: String, adultAccess: Boolean = false) {
-        prefs.edit().apply {
-            putBoolean(KEY_ACTIVATED, true)
-            putString(KEY_ACTIVATION_CODE, code)
-            putBoolean(KEY_ADULT_ACCESS, adultAccess)
-            apply()
-        }
+    fun saveActivation(code: String, adultAccess: Boolean = false, parentalPin: String = "") {
+    prefs.edit().apply {
+        putBoolean(KEY_ACTIVATED, true)
+        putString(KEY_ACTIVATION_CODE, code)
+        putBoolean(KEY_ADULT_ACCESS, adultAccess)
+        putString(KEY_PARENTAL_PIN, parentalPin)
+        apply()
     }
+}
     
     fun isActivated(): Boolean = prefs.getBoolean(KEY_ACTIVATED, false)
     
@@ -87,6 +89,8 @@ class PreferencesManager(context: Context) {
     }
     
     private fun saveRecent(recent: List<Channel>) {
-        prefs.edit().putString(KEY_RECENT, gson.toJson(recent)).apply()
+        prefs.edit().putString(KEY_RECENT, gson.toJson(recent)).apply() 
     }
+		fun getParentalPin(): String? = prefs.getString(KEY_PARENTAL_PIN, null)
+
 }
