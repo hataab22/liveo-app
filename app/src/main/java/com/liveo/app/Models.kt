@@ -1,3 +1,6 @@
+import retrofit2.http.GET
+import retrofit2.http.Query
+
 package com.liveo.app
 
 data class Channel(
