@@ -26,10 +26,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
-        setSupportActionBar(findViewById(R.id.toolbar))
+        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
         
         prefsManager = PreferencesManager(this)
-        
         tabLayout = findViewById(R.id.tabLayout)
         viewPager = findViewById(R.id.viewPager)
         
@@ -38,14 +38,11 @@ class MainActivity : AppCompatActivity() {
     
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
-        
-        val lockItem = menu.findItem(R.id.action_parental_lock)
-        lockItem.title = if (prefsManager.isParentalUnlocked()) {
-            "تفعيل القفل الأبوي"
+        menu.findItem(R.id.action_parental_lock)?.title = if (prefsManager.isParentalUnlocked()) {
+            "تفعيل الرقابة الأبوية"
         } else {
-            "تعطيل القفل الأبوي"
+            "تعطيل الرقابة الأبوية"
         }
-        
         return true
     }
     
@@ -66,7 +63,7 @@ class MainActivity : AppCompatActivity() {
     private fun toggleParentalLock() {
         if (prefsManager.isParentalUnlocked()) {
             prefsManager.setParentalUnlocked(false)
-            Toast.makeText(this, "تم تفعيل القفل الأبوي", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "تم تفعيل الرقابة الأبوية", Toast.LENGTH_SHORT).show()
             invalidateOptionsMenu()
             recreate()
         } else {
@@ -77,19 +74,17 @@ class MainActivity : AppCompatActivity() {
     private fun showPinDialog() {
         val input = EditText(this).apply {
             hint = "أدخل رمز PIN"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or 
-                        android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
         }
         
         AlertDialog.Builder(this)
-            .setTitle("القفل الأبوي")
-            .setMessage("أدخل رمز PIN (افتراضي: 1234)")
+            .setTitle("الرقابة الأبوية")
+            .setMessage("أدخل رمز PIN (1234)")
             .setView(input)
             .setPositiveButton("تأكيد") { _, _ ->
-                val pin = input.text.toString()
-                if (pin == "1234") {
+                if (input.text.toString() == "1234") {
                     prefsManager.setParentalUnlocked(true)
-                    Toast.makeText(this, "تم تعطيل القفل الأبوي", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "تم تعطيل الرقابة الأبوية", Toast.LENGTH_SHORT).show()
                     invalidateOptionsMenu()
                     recreate()
                 } else {
@@ -103,12 +98,12 @@ class MainActivity : AppCompatActivity() {
     private fun showLogoutDialog() {
         AlertDialog.Builder(this)
             .setTitle("تسجيل الخروج")
-            .setMessage("هل تريد تسجيل الخروج من التطبيق؟")
+            .setMessage("هل تريد تسجيل الخروج؟")
             .setPositiveButton("نعم") { _, _ ->
                 prefsManager.clearActivation()
-                val intent = Intent(this, ActivationActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
+                startActivity(Intent(this, ActivationActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                })
                 finish()
             }
             .setNegativeButton("لا", null)
@@ -118,25 +113,20 @@ class MainActivity : AppCompatActivity() {
     private fun loadChannels() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val url = "https://drive.google.com/uc?export=download&id=1EED9-uQPohWSo2mPYtT9Ji9hr7wBzg4A"
-                val parser = M3UParser(url)
+                val parser = M3UParser("https://drive.google.com/uc?export=download&id=1EED9-uQPohWSo2mPYtT9Ji9hr7wBzg4A")
                 allChannels = parser.parse()
-                
-                withContext(Dispatchers.Main) {
-                    setupViewPager()
-                }
+                withContext(Dispatchers.Main) { setupViewPager() }
             } catch (e: Exception) {
-                e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "خطأ في تحميل القنوات", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_SHORT).show()
+                    setupViewPager()
                 }
             }
         }
     }
     
     private fun setupViewPager() {
-        val adapter = ViewPagerAdapter(supportFragmentManager, allChannels, prefsManager)
-        viewPager.adapter = adapter
+        viewPager.adapter = ViewPagerAdapter(supportFragmentManager, allChannels, prefsManager)
         tabLayout.setupWithViewPager(viewPager)
     }
 }
