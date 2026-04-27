@@ -2,6 +2,7 @@ package com.liveo.app
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -20,7 +21,7 @@ class ActivationActivity : AppCompatActivity() {
     private lateinit var activateButton: Button
     private lateinit var prefsManager: PreferencesManager
     
-    private val API_URL = "https://liveo-backend.onrender.com"
+    private val BASE_URL = "https://liveo-backend.onrender.com"
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,54 +54,65 @@ class ActivationActivity : AppCompatActivity() {
     
     private fun validateCode(code: String) {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // جرب endpoint: /api/validate
-                val url = URL("$API_URL/api/validate?code=$code")
-                val connection = url.openConnection() as HttpURLConnection
-                connection.requestMethod = "GET"
-                connection.connectTimeout = 10000
-                connection.readTimeout = 10000
-                
-                val responseCode = connection.responseCode
-                
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val response = connection.inputStream.bufferedReader().readText()
-                    val jsonObject = JSONObject(response)
+            val endpoints = listOf(
+                "/api/validate?code=$code",
+                "/validate?code=$code",
+                "/api/codes/validate?code=$code",
+                "/check?code=$code",
+                "/api/check?code=$code",
+                "/codes/validate?code=$code"
+            )
+            
+            var success = false
+            var adultAccess = false
+            
+            for (endpoint in endpoints) {
+                try {
+                    val url = URL("$BASE_URL$endpoint")
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.requestMethod = "GET"
+                    connection.connectTimeout = 10000
+                    connection.readTimeout = 10000
                     
-                    val isValid = jsonObject.optBoolean("valid", false) || 
-                                 jsonObject.optBoolean("isValid", false) ||
-                                 jsonObject.optBoolean("success", false)
+                    val responseCode = connection.responseCode
                     
-                    val hasAdultAccess = jsonObject.optBoolean("adult_access", false) ||
-                                        jsonObject.optBoolean("adultAccess", false)
-                    
-                    withContext(Dispatchers.Main) {
-                        if (isValid) {
-                            prefsManager.saveActivation(code, hasAdultAccess)
-                            Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح!", Toast.LENGTH_SHORT).show()
-                            navigateToMain()
-                        } else {
-                            Toast.makeText(this@ActivationActivity, "كود التفعيل غير صحيح", Toast.LENGTH_SHORT).show()
-                            resetButton()
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = connection.inputStream.bufferedReader().readText()
+                        Log.d("ActivationActivity", "Endpoint: $endpoint - Response: $response")
+                        
+                        try {
+                            val json = JSONObject(response)
+                            val isValid = json.optBoolean("valid", false) || 
+                                         json.optBoolean("isValid", false) ||
+                                         json.optBoolean("success", false) ||
+                                         json.optBoolean("active", false)
+                            
+                            if (isValid) {
+                                adultAccess = json.optBoolean("adult_access", false) ||
+                                            json.optBoolean("adultAccess", false)
+                                success = true
+                                Log.d("ActivationActivity", "SUCCESS! Endpoint: $endpoint")
+                                break
+                            }
+                        } catch (e: Exception) {
+                            Log.e("ActivationActivity", "JSON parse error: ${e.message}")
                         }
                     }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@ActivationActivity, "خطأ في الاتصال بالخادم", Toast.LENGTH_SHORT).show()
-                        resetButton()
-                    }
+                    
+                    connection.disconnect()
+                    
+                } catch (e: Exception) {
+                    Log.e("ActivationActivity", "Endpoint $endpoint failed: ${e.message}")
                 }
-                
-                connection.disconnect()
-                
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        this@ActivationActivity, 
-                        "خطأ في الاتصال: ${e.message}", 
-                        Toast.LENGTH_LONG
-                    ).show()
+            }
+            
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    prefsManager.saveActivation(code, adultAccess)
+                    Toast.makeText(this@ActivationActivity, "تم التفعيل بنجاح!", Toast.LENGTH_SHORT).show()
+                    navigateToMain()
+                } else {
+                    Toast.makeText(this@ActivationActivity, "كود التفعيل غير صحيح أو خطأ في الاتصال", Toast.LENGTH_LONG).show()
                     resetButton()
                 }
             }
